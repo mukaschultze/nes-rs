@@ -84,11 +84,6 @@ pub fn should_work() {
         // assert_eq!(reg_ppu_y,  , "ppu y\n{}\n", line);
         // assert_eq!(reg_cyc, nes.cpu.ticks , "clock cycles\n{}\n", line);
     }
-
-    let codes = (nes.cpu.bus.read(0x02), nes.cpu.bus.read(0x03));
-    assert_eq!(codes, (0x00, 0x00));
-
-    println!("Finished with codes {:#X} and {:#X}", codes.0, codes.1);
 }
 
 pub fn format_instruction(opcode: u8, ll: u8, hh: u8) -> String {
