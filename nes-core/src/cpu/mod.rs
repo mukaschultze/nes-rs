@@ -19,7 +19,7 @@ pub struct CPU6502<'a> {
     /// Y register.
     pub yr: u8,
     /// Status register (NV-BDIZC).
-    pub sr: u8, // 0x34,
+    pub sr: u8,
     /// Stack pointer.
     pub sp: u8,
     /// The number of clock cycles since the start of the processor.
