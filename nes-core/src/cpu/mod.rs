@@ -3,6 +3,7 @@ mod execution;
 mod instruction;
 pub mod instructions_info;
 mod util;
+use crate::cpu::util::SRFlag;
 
 use crate::bus::DataBus;
 use crate::cpu::instructions_info::Instruction;
@@ -88,7 +89,7 @@ impl<'a> CPU6502<'a> {
         sr &= !0x20;
         self.push8(sr);
         self.pc = self.load16(0xFFFA);
-        self.set_interrupt(true);
+        self.set_flag(SRFlag::InterruptDisable, true);
     }
 
     fn irq(&mut self) {
@@ -99,6 +100,6 @@ impl<'a> CPU6502<'a> {
         sr &= !0x20;
         self.push8(sr);
         self.pc = self.load16(0xFFFE);
-        self.set_interrupt(true);
+        self.set_flag(SRFlag::InterruptDisable, true);
     }
 }
