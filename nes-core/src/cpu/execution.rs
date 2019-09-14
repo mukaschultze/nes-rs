@@ -5,11 +5,11 @@ use crate::cpu::CPU6502;
 macro_rules! branch {
     ($s:ident, $value:expr, $offset:expr) => {
         if $value {
-            if ($s.pc & 0xFF00) != ($s.rel_addr($s.pc, $offset) & 0xFF00) {
+            if page_crossed!($s.pc, rel_addr!($s.pc, $offset)) {
                 $s.ticks += 1;
             }
 
-            $s.pc = $s.rel_addr($s.pc, $offset);
+            $s.pc = rel_addr!($s.pc, $offset);
             $s.ticks += 1;
         }
     };

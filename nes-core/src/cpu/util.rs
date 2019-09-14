@@ -24,12 +24,6 @@ impl CPU6502<'_> {
         (self.sr & flag as u8) != 0
     }
 
-    /// Returns the relative address obtained by adding the displacement to the PC.
-    #[allow(clippy::cast_lossless)]
-    pub fn rel_addr(&mut self, pc: u16, displacement: i8) -> u16 {
-        (pc as i32 + displacement as i32) as u16
-    }
-
     /// Set the Program Status Register to the value given.
     pub fn set_sr(&mut self, bb: u8) {
         self.sr = bb;
@@ -79,9 +73,8 @@ impl CPU6502<'_> {
         return join_bytes!(hh, ll);
     }
 
-    /// Store a in: u8 a memory address.
+    /// Store a byte in the memory address.
     pub fn store8(&mut self, address: u16, bb: u8) {
         self.bus.write(address, bb);
     }
-    
 }

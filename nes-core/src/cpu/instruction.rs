@@ -329,15 +329,14 @@ impl CPU6502<'_> {
                 let ll = self.load8(ll as u16);
                 let sum = unchecked_add!(join_bytes!(hh, ll), self.yr as u16);
 
-                if (address & 0xFF00) != (sum & 0xFF00) {
-                    // Cross-page
+                if page_crossed!(address, sum) {
                     self.ticks += page_cross_penalty as u64;
                 }
 
                 self.load8(sum) as u16
             }
 
-            AddressMode::Relative => self.rel_addr(self.pc, ll as i8),
+            AddressMode::Relative => rel_addr!(self.pc, ll),
             AddressMode::Zeropage => self.load8(ll as u16) as u16,
             AddressMode::ZeropageX => self.load8(unchecked_add!(ll, self.xr) as u16) as u16,
             AddressMode::ZeropageY => self.load8(unchecked_add!(ll, self.yr) as u16) as u16,
@@ -366,15 +365,17 @@ impl CPU6502<'_> {
                 let ll = self.load8(ll as u16);
                 let sum = join_bytes!(hh, ll) + self.yr as u16;
 
-                // if ((address & 0xFF00) != (sum & 0xFF00))
+                // if page_crossed!(address, sum) {
                 //     self.ticks += pageCrossPenalty;
+                // }
 
                 self.store8(sum as u16, bb);
             }
 
             AddressMode::AbsoluteY => {
-                // if ((address & 0xFF00) != ((address + self.yr) & 0xFF00))
+                // if page_crossed!(address, address + self.yr) {
                 //     self.ticks += pageCrossPenalty;
+                // }
 
                 self.store8((address + self.yr as u16) as u16, bb);
             }

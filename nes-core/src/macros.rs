@@ -38,6 +38,13 @@ macro_rules! unchecked_sub {
     ($left:expr,$right:expr,$($other:expr),+) => (unchecked_sub!(unchecked_sub!($left, $right), $($other),+));
 }
 
+#[macro_export]
+macro_rules! rel_addr {
+    ($address:expr, $displacement:expr) => {
+        ($address as i32 + $displacement as i32) as u16
+    };
+}
+
 #[cfg(test)]
 mod test {
     #[test]
@@ -75,5 +82,11 @@ mod test {
         assert_eq!(unchecked_sub!(90u8, 30u8, 30u8), 30u8);
         assert_eq!(unchecked_sub!(100u8, 150u8), 206u8);
         assert_eq!(unchecked_sub!(100u8, 50u8, 100u8), 206u8);
+    }
+
+    #[test]
+    fn rel_addr() {
+        assert_eq!(rel_addr!(0x1234, 10), 0x123E);
+        assert_eq!(rel_addr!(0x1234, -10), 0x122A);
     }
 }
