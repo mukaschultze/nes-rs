@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"name": "Root",
+			"path": "."
+		},
+		{
+			"name": "Core",
+			"path": "nes-core"
+		},
+		{
+			"name": "Server",
+			"path": "nes-server"
+		}
+	],
+	"settings": {
+		"files.insertFinalNewline": true,
+		"editor.formatOnSave": true
+	}
+}
