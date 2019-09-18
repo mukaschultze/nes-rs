@@ -20,35 +20,20 @@ pub struct NesConsole {
     bus: Rc<RefCell<DataBus>>,
 }
 
-#[test]
-fn nestest() {
-    should_work();
-}
-
-pub fn get_nes() -> NesConsole {
-    let rom_path = Path::new("./test/nestest.nes");
-
-    let rom = Rc::new(RefCell::new(RomFile::new(rom_path)));
+pub fn get_nes(rom: Rc<RefCell<RomFile>>) -> NesConsole {
     let bus = Rc::new(RefCell::new(DataBus::new(rom.clone())));
     let cpu = Rc::new(RefCell::new(CPU6502::new(bus.clone())));
 
     NesConsole { bus, cpu }
 }
 
-pub fn should_work() {
-    let log_path = Path::new("./test/nestest.log");
-    let log_file = File::open(&log_path).unwrap();
+fn check_instructions(log_path: &Path) {
+    let log_file = File::open(log_path).unwrap();
     let log_reader = BufReader::new(log_file);
 
     let rom_path = Path::new("./test/nestest.nes");
-    let mut rom = RomFile::new(rom_path);
-
-    // let mut mapper = match rom.get_mapper() {
-    //     Some(mapper) => mapper,
-    //     None => panic!("No mapper in ROM"),
-    // };
-
-    let nes = get_nes();
+    let rom = Rc::new(RefCell::new(RomFile::new(rom_path)));
+    let nes = get_nes(rom);
 
     // let pc_high = nes.cpu.bus.read(0xFFFD);
     // let pc_low = nes.cpu.bus.read(0xFFFC);
@@ -56,10 +41,10 @@ pub fn should_work() {
     // nes.cpu.pc = join_bytes!(pc_high, pc_low);
 
     let mut cpu = nes.cpu.borrow_mut();
-    let regex = Regex::new(r"([0-9A-F]{4})  ([0-9A-F]{2}) ([0-9A-F]{2}|\s{2}) ([0-9A-F]{2}|\s{2})  .{32}A:([0-9A-F]{2}) X:([0-9A-F]{2}) Y:([0-9A-F]{2}) P:([0-9A-F]{2}) SP:([0-9A-F]{2}) PPU:\s*(\d*),\s*(\d*) CYC:(\d+)").unwrap();
+    let regex = Regex::new(r"([0-9A-F]{4})  ([0-9A-F]{2}) ([0-9A-F]{2}|\s{2}) ([0-9A-F]{2}|\s{2}) [ \*].{32}A:([0-9A-F]{2}) X:([0-9A-F]{2}) Y:([0-9A-F]{2}) P:([0-9A-F]{2}) SP:([0-9A-F]{2}) PPU:\s*(\d*),\s*(\d*) CYC:(\d+)").unwrap();
 
     for line in log_reader.lines().map(|l| l.unwrap()) {
-        let cap = regex.captures(&line).unwrap();
+        let cap = regex.captures(&line).expect(&line);
         let addr = u16::from_str_radix(&cap[1], 16).unwrap();
         let opcode = u8::from_str_radix(&cap[2], 16).unwrap();
         let byte_lo = if &cap[3] != "  " {
@@ -97,6 +82,17 @@ pub fn should_work() {
         // assert_eq!(reg_ppu_y,  , "ppu y\n{}\n", line);
         // assert_eq!(reg_cyc, cpu.ticks , "clock cycles\n{}\n", line);
     }
+}
+
+#[test]
+fn official_instructions() {
+    check_instructions(&Path::new("./test/nestest.log"));
+}
+
+#[test]
+#[ignore]
+fn unofficial_instructions() {
+    check_instructions(&Path::new("./test/nestest.full.log"));
 }
 
 pub fn format_instruction(opcode: u8, ll: u8, hh: u8) -> String {
