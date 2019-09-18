@@ -1,32 +1,30 @@
-use crate::rom::mappers::mapper0::Mapper0;
 use crate::rom::rom_header::RomHeader;
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 
-pub struct RomFile<'a> {
+pub struct RomFile {
     pub header: RomHeader,
     pub pgr_data: Vec<u8>,
     pub chr_data: Vec<u8>,
-    pub mapper: Option<Mapper0<'a>>,
 }
 
-impl<'a> RomFile<'a> {
+impl RomFile {
     pub fn new(path: &Path) -> Self {
         let display = path.display();
 
         // Open the path in read-only mode, returns `io::Result<File>`
         let mut file = match File::open(&path) {
-            Err(why) => panic!("Couldn't open {}: {}", display, why.description()),
             Ok(file) => file,
+            Err(why) => panic!("Couldn't open {}: {}", display, why.description()),
         };
 
         let header_buf = &mut [0u8; 16];
 
         match file.read_exact(header_buf) {
-            Err(why) => panic!("Error reading {}: {}", display, why.description()),
             Ok(file) => file,
+            Err(why) => panic!("Error reading {}: {}", display, why.description()),
         };
 
         let header = RomHeader::new(header_buf);
@@ -39,30 +37,38 @@ impl<'a> RomFile<'a> {
         }
 
         match file.read_exact(pgr_data) {
-            Err(why) => panic!("Error reading {}: {}", display, why.description()),
             Ok(file) => file,
+            Err(why) => panic!("Error reading {}: {}", display, why.description()),
         };
         match file.read_exact(chr_data) {
-            Err(why) => panic!("Error reading {}: {}", display, why.description()),
             Ok(file) => file,
+            Err(why) => panic!("Error reading {}: {}", display, why.description()),
         };
 
         RomFile {
             header,
-            mapper: None,
             pgr_data: pgr_data.to_vec(),
             chr_data: chr_data.to_vec(),
         }
     }
 
-    pub fn get_mapper(&'a mut self) -> Option<Mapper0> {
-        match self.header.get_mapper_id() {
-            0 => Some(Mapper0::new(self)),
-            n => panic!("Mapper {:#X} not implemented", n),
+    pub fn rel_address(&self, address: u16) -> u16 {
+        match self.header.prg_rom_size {
+            1 => (address - 0x8000) % 0x4000,
+            _ => (address - 0x8000),
         }
     }
 
-    // public Cartridge GetCartridge() {
-    //     return new Cartridge(this);
-    // }
+    pub fn read(&self, address: u16) -> u8 {
+        match address {
+            0x0000..=0x1FFF => self.chr_data[address as usize],
+            0x8000..=0xFFFF => self.pgr_data[self.rel_address(address) as usize],
+            _address => panic!(
+                "Tried to read from address outside ROM bounds: {:#X}",
+                address
+            ),
+        }
+    }
+
+    pub fn write(&self, _address: u16, _value: u8) {}
 }

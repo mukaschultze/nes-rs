@@ -17,7 +17,7 @@ macro_rules! branch {
 
 #[allow(clippy::cast_lossless)]
 #[allow(unused_variables)] // TODO: Remove
-impl CPU6502<'_> {
+impl CPU6502 {
     /// Add with carry.
     pub fn adc(&mut self, mode: AddressMode, ll: u8, hh: u8) {
         let src = self.get_memory_value(ll, hh, mode, 0); // TODO: Fix page cross add

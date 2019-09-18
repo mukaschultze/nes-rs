@@ -3,7 +3,7 @@ use crate::cpu::CPU6502;
 use std::u8;
 
 #[allow(clippy::cast_lossless)]
-impl CPU6502<'_> {
+impl CPU6502 {
     fn illegal_op_code(&mut self, opcode: u8) {
         println!("Illegal opcode {:#2X} @ {:#4X}", opcode, self.pc);
     }

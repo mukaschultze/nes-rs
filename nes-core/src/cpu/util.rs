@@ -11,7 +11,7 @@ pub enum SRFlag {
     Negative = 1 << 7,
 }
 
-impl CPU6502<'_> {
+impl CPU6502 {
     pub fn set_flag(&mut self, flag: SRFlag, set: bool) {
         if set {
             self.sr |= flag as u8;
@@ -34,18 +34,21 @@ impl CPU6502<'_> {
         self.sr
     }
 
+    /// Get a byte from the memory address.
+    pub fn load8(&mut self, address: u16) -> u8 {
+        self.bus.borrow().read(address)
+    }
+
+    /// Store a byte in the memory address.
+    pub fn store8(&mut self, address: u16, bb: u8) {
+        self.bus.borrow_mut().write(address, bb);
+    }
+
     /// Pull a byte the stack.
     #[allow(clippy::cast_lossless)]
     pub fn pull8(&mut self) -> u8 {
         self.sp += 1;
         self.load8(0x100 + self.sp as u16)
-    }
-
-    /// Pull a short off the stack.
-    pub fn pull16(&mut self) -> u16 {
-        let ll = self.pull8();
-        let hh = self.pull8();
-        join_bytes!(hh, ll)
     }
 
     /// Push a onto the stack.
@@ -55,15 +58,17 @@ impl CPU6502<'_> {
         self.sp -= 1;
     }
 
+    /// Pull a short off the stack.
+    pub fn pull16(&mut self) -> u16 {
+        let ll = self.pull8();
+        let hh = self.pull8();
+        join_bytes!(hh, ll)
+    }
+
     /// Push a short onto the stack.
     pub fn push16(&mut self, value: u16) {
         self.push8(high_byte!(value));
         self.push8(low_byte!(value));
-    }
-
-    /// Get a byte from the memory address.
-    pub fn load8(&mut self, address: u16) -> u8 {
-        self.bus.read(address)
     }
 
     /// Get a short from the memory address.
@@ -71,10 +76,5 @@ impl CPU6502<'_> {
         let ll = self.load8(address);
         let hh = self.load8(address + 1);
         return join_bytes!(hh, ll);
-    }
-
-    /// Store a byte in the memory address.
-    pub fn store8(&mut self, address: u16, bb: u8) {
-        self.bus.write(address, bb);
     }
 }

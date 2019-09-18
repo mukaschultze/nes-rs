@@ -1,6 +1,8 @@
 pub mod address_mode;
 mod execution;
 mod instruction;
+use std::cell::RefCell;
+use std::rc::Rc;
 pub mod instructions_info;
 mod util;
 use crate::cpu::util::SRFlag;
@@ -9,7 +11,7 @@ use crate::bus::DataBus;
 use crate::cpu::instructions_info::Instruction;
 use std::u8;
 
-pub struct CPU6502<'a> {
+pub struct CPU6502 {
     /// Program counter.
     pub pc: u16,
     /// Accumulator register.
@@ -28,11 +30,11 @@ pub struct CPU6502<'a> {
     irq_requested: bool,
     nmi_requested: bool,
 
-    pub bus: &'a mut DataBus<'a>,
+    bus: Rc<RefCell<DataBus>>,
 }
 
-impl<'a> CPU6502<'a> {
-    pub fn new(bus: &'a mut DataBus<'a>) -> Self {
+impl CPU6502 {
+    pub fn new(bus: Rc<RefCell<DataBus>>) -> Self {
         CPU6502 {
             pc: 0xC000,
             ac: 0x00,

@@ -6,21 +6,33 @@ use crate::cpu::instructions_info::Instruction;
 use crate::cpu::CPU6502;
 use crate::rom::rom_file::RomFile;
 use regex::Regex;
+use std::cell::RefCell;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::Path;
+use std::rc::Rc;
 use std::u16;
 use std::u8;
 
-pub struct NesConsole<'a> {
-    cpu: &'a mut CPU6502<'a>,
-    // bus: &'a mut DataBus<'a>,
+pub struct NesConsole {
+    cpu: Rc<RefCell<CPU6502>>,
+    bus: Rc<RefCell<DataBus>>,
 }
 
 #[test]
 fn nestest() {
     should_work();
+}
+
+pub fn get_nes() -> NesConsole {
+    let rom_path = Path::new("./test/nestest.nes");
+
+    let rom = Rc::new(RefCell::new(RomFile::new(rom_path)));
+    let bus = Rc::new(RefCell::new(DataBus::new(rom.clone())));
+    let cpu = Rc::new(RefCell::new(CPU6502::new(bus.clone())));
+
+    NesConsole { bus, cpu }
 }
 
 pub fn should_work() {
@@ -31,20 +43,21 @@ pub fn should_work() {
     let rom_path = Path::new("./test/nestest.nes");
     let mut rom = RomFile::new(rom_path);
 
-    let mut mapper = match rom.get_mapper() {
-        Some(mapper) => mapper,
-        None => panic!("No mapper in ROM"),
-    };
-    let mut bus = DataBus::new(&mut mapper);
-    let mut cpu = CPU6502::new(&mut bus);
-    let nes = NesConsole { cpu: &mut cpu };
+    // let mut mapper = match rom.get_mapper() {
+    //     Some(mapper) => mapper,
+    //     None => panic!("No mapper in ROM"),
+    // };
+
+    let nes = get_nes();
 
     // let pc_high = nes.cpu.bus.read(0xFFFD);
     // let pc_low = nes.cpu.bus.read(0xFFFC);
 
     // nes.cpu.pc = join_bytes!(pc_high, pc_low);
 
+    let mut cpu = nes.cpu.borrow_mut();
     let regex = Regex::new(r"([0-9A-F]{4})  ([0-9A-F]{2}) ([0-9A-F]{2}|\s{2}) ([0-9A-F]{2}|\s{2})  .{32}A:([0-9A-F]{2}) X:([0-9A-F]{2}) Y:([0-9A-F]{2}) P:([0-9A-F]{2}) SP:([0-9A-F]{2}) PPU:\s*(\d*),\s*(\d*) CYC:(\d+)").unwrap();
+
     for line in log_reader.lines().map(|l| l.unwrap()) {
         let cap = regex.captures(&line).unwrap();
         let addr = u16::from_str_radix(&cap[1], 16).unwrap();
@@ -68,21 +81,21 @@ pub fn should_work() {
         // let reg_ppu_y = u16::from_str_radix(&cap[11], 10).unwrap();
         // let reg_cyc = u16::from_str_radix(&cap[12], 10).unwrap();
 
-        assert_eq!(addr, nes.cpu.pc, "instruction address\n{}\n", line);
-        assert_eq!(reg_a, nes.cpu.ac, "ac register\n{}\n", line);
-        assert_eq!(reg_x, nes.cpu.xr, "xr register\n{}\n", line);
-        assert_eq!(reg_y, nes.cpu.yr, "yr register\n{}\n", line);
-        assert_eq!(reg_p, nes.cpu.sr, "sr register\n{}\n", line);
-        assert_eq!(reg_sp, nes.cpu.sp, "sp register\n{}\n", line);
+        assert_eq!(addr, cpu.pc, "instruction address\n{}\n", line);
+        assert_eq!(reg_a, cpu.ac, "ac register\n{}\n", line);
+        assert_eq!(reg_x, cpu.xr, "xr register\n{}\n", line);
+        assert_eq!(reg_y, cpu.yr, "yr register\n{}\n", line);
+        assert_eq!(reg_p, cpu.sr, "sr register\n{}\n", line);
+        assert_eq!(reg_sp, cpu.sp, "sp register\n{}\n", line);
 
-        let las_instr = nes.cpu.process_next_opcode();
+        let las_instr = cpu.process_next_opcode();
 
         assert_eq!(opcode, las_instr.0, "opcode\n{}\n", line);
         assert_eq!(byte_lo, las_instr.1, "low byte\n{}\n", line);
         assert_eq!(byte_hi, las_instr.2, "high byte\n{}\n", line);
         // assert_eq!(reg_ppu_x,  , "ppu x\n{}\n", line);
         // assert_eq!(reg_ppu_y,  , "ppu y\n{}\n", line);
-        // assert_eq!(reg_cyc, nes.cpu.ticks , "clock cycles\n{}\n", line);
+        // assert_eq!(reg_cyc, cpu.ticks , "clock cycles\n{}\n", line);
     }
 }
 
