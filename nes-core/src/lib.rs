@@ -3,6 +3,7 @@ mod macros;
 pub mod bus;
 pub mod console;
 pub mod cpu;
+pub mod ppu;
 pub mod rom;
 
 use std::cell::RefCell;

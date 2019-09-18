@@ -1,6 +1,5 @@
 use crate::rom::rom_file::RomFile;
 use std::cell::RefCell;
-use std::ops::DerefMut;
 use std::rc::Rc;
 
 const RAM_SIZE: usize = 0x0800;
