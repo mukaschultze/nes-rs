@@ -4,6 +4,7 @@ use crate::bus::DataBus;
 use crate::cpu::address_mode::AddressMode;
 use crate::cpu::instructions_info::Instruction;
 use crate::cpu::CPU6502;
+use crate::ppu::Ppu;
 use crate::rom::rom_file::RomFile;
 use regex::Regex;
 use std::cell::RefCell;
@@ -16,15 +17,28 @@ use std::u16;
 use std::u8;
 
 pub struct NesConsole {
-    cpu: Rc<RefCell<CPU6502>>,
-    bus: Rc<RefCell<DataBus>>,
+    pub cpu: Rc<RefCell<CPU6502>>,
+    pub bus: Rc<RefCell<DataBus>>,
+    pub ppu: Rc<RefCell<Ppu>>,
 }
 
-pub fn get_nes(rom: Rc<RefCell<RomFile>>) -> NesConsole {
-    let bus = Rc::new(RefCell::new(DataBus::new(rom.clone())));
-    let cpu = Rc::new(RefCell::new(CPU6502::new(bus.clone())));
+impl NesConsole {
 
-    NesConsole { bus, cpu }
+    pub fn new(rom: Rc<RefCell<RomFile>>) -> NesConsole {
+        let bus = Rc::new(RefCell::new(DataBus::new(rom.clone())));
+        let cpu = Rc::new(RefCell::new(CPU6502::new(bus.clone())));
+        let ppu = Rc::new(RefCell::new(Ppu::new(cpu.clone(), bus.clone(), rom.clone())));
+
+        bus.clone().borrow_mut().ppu = Some(ppu.clone());
+
+        NesConsole { bus, cpu, ppu }
+    }
+
+    pub fn tick(&mut self ) {
+        self.cpu.borrow_mut().process_next_opcode();
+        self.ppu.borrow_mut().Tick();
+    }
+
 }
 
 fn check_instructions(log_path: &Path) {
@@ -33,7 +47,7 @@ fn check_instructions(log_path: &Path) {
 
     let rom_path = Path::new("./test/nestest.nes");
     let rom = Rc::new(RefCell::new(RomFile::new(rom_path)));
-    let nes = get_nes(rom);
+    let nes = NesConsole::new(rom);
 
     // let pc_high = nes.cpu.bus.read(0xFFFD);
     // let pc_low = nes.cpu.bus.read(0xFFFC);

@@ -1,4 +1,8 @@
 use crate::rom::rom_file::RomFile;
+use crate::bus::DataBus;
+use crate::cpu::CPU6502;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 /// https://wiki.nesdev.com/w/index.php/PPU
 #[allow(non_snake_case)]
@@ -100,13 +104,15 @@ pub struct Ppu {
 
     n: u8,
     spriteCount: u8,
+
+    cpu: Rc<RefCell<CPU6502>>,
+    bus: Rc<RefCell<DataBus>>,
 }
 
-#[allow(clippy::cast_lossless)]
-impl Default for Ppu {
-    fn default() -> Self {
-        Ppu {
-            nmiEnable: 0,
+impl Ppu {
+    pub fn new(cpu: Rc<RefCell<CPU6502>>,bus: Rc<RefCell<DataBus>>, rom: Rc<RefCell<RomFile>>) -> Self {
+        let mut ppu = Ppu {
+           nmiEnable: 0,
             PPU_master_slave: 0,
             spriteHeight: 0,
             backgroundTileSelect: 0,
@@ -154,17 +160,13 @@ impl Default for Ppu {
             oamData: 0,
             n: 0,
             spriteCount: 0,
-        }
-    }
-}
-
-impl Ppu {
-    pub fn new(rom: &RomFile) -> Self {
-        let mut ppu = Ppu {
-            ..Default::default()
+            cpu,
+            bus,
         };
 
-        ppu.vram.copy_from_slice(&rom.chr_data);
+        let r = rom.as_ref().borrow();
+
+        ppu.vram[0..0x2000].copy_from_slice(&r.chr_data[0..0x2000]);
 
         ppu
     }
@@ -339,8 +341,9 @@ impl Ppu {
 
         if self.dot == 1 && self.scanline == 241 {
             self.vblank = 1;
-            // if self.nmiEnable != 0
-            // nes.cpu.RequestNMI(); // TODO
+            if self.nmiEnable != 0{
+                self.cpu.borrow_mut().request_nmi();
+            }
         }
 
         if preRenderLine && self.dot == 1 {
@@ -362,7 +365,7 @@ impl Ppu {
     }
 
     /// https://wiki.nesdev.com/w/index.php/File:Ntsc_timing.png
-    fn Tick(&mut self) {
+    pub fn Tick(&mut self) {
         let xPos = self.dot - 1;
         let yPos = self.scanline;
 
@@ -494,12 +497,11 @@ impl Ppu {
     }
 
     // #region CPU mapped registers
-    fn WriteRegisterCPUAddress(&mut self, address: u16, value: u8) {
+    pub fn WriteRegisterCPUAddress(&mut self, address: u16, value: u8) {
         match address {
             0x4014 => {
-                for i in 0..256 {
-                    // TODO
-                    // self.oamMemory[(i + self.oamAddress) % 256] = nes.cpuBus.Read((ushort)((value << 8) + i));
+                for i in 0..=255 {
+                    // self.oamMemory[(i + self.oamAddress) as usize % 256] = self.bus.clone().borrow().read(((value as u16) << 8) + i as u16);
                 }
             }
             0x2000 => {
@@ -574,7 +576,7 @@ impl Ppu {
         };
     }
 
-    fn ReadRegisterCPUAddress(&mut self, address: u16) -> u8 {
+  pub  fn ReadRegisterCPUAddress(&mut self, address: u16) -> u8 {
         match address {
             0x4014 => 0, // OAMDMA $4014 is write only!
             0x2000 => 0, // PPUCTRL $2000 is write only!
