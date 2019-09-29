@@ -7,7 +7,7 @@ use std::path::Path;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::pixels::Color;
-use sdl2::rect::Rect;
+
 use sdl2::rect::Point;
 use nes_core::rom::rom_file::RomFile;
 use nes_core::console::NesConsole;
@@ -41,7 +41,7 @@ fn main() {
             nes.tick();
         }
 
-        for evt in event_pump.poll_iter() {
+        for _evt in event_pump.poll_iter() {
             
         }
 

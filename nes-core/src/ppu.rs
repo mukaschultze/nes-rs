@@ -500,20 +500,20 @@ impl Ppu {
     pub fn WriteRegisterCPUAddress(&mut self, address: u16, value: u8) {
         match address {
             0x4014 => {
-                for i in 0..=255 {
+                for _i in 0..=255 {
                     // self.oamMemory[(i + self.oamAddress) as usize % 256] = self.bus.clone().borrow().read(((value as u16) << 8) + i as u16);
                 }
             }
             0x2000 => {
                 // PPUCTRL $2000 VPHB SINN
-                self.nmiEnable = ((value >> 7) & 1);
-                self.PPU_master_slave = ((value >> 6) & 1);
+                self.nmiEnable = (value >> 7) & 1;
+                self.PPU_master_slave = (value >> 6) & 1;
                 self.spriteHeight = ((value >> 5) & 1) * 8 + 8; // 8x16 or 8x8
                 self.backgroundTileSelect = ((value as u16 >> 4) & 1) * 0x1000;
                 self.spriteTileSelect = ((value as u16 >> 3) & 1) * 0x1000;
                 self.incrementMode = ((value as u16 >> 2) & 1) * 31 + 1;
                 self.nametableSelect = (value as u16 & 0x03) * 0x400 + 0x2000; // !MIGHT REMOVE
-                self.t = ((self.t & 0xF3FF) | ((value as u16 & 0x3) << 10));
+                self.t = (self.t & 0xF3FF) | ((value as u16 & 0x3) << 10);
             }
 
             0x2001 => {
@@ -545,11 +545,11 @@ impl Ppu {
             0x2005 => {
                 // PPUSCROLL $2005 xxxx xxxx
                 if !self.w {
-                    self.t = ((self.t & 0xFFE0) | ((value as u16 >> 0x3) & 0x1F));
-                    self.x = (value & 0x3);
+                    self.t = (self.t & 0xFFE0) | ((value as u16 >> 0x3) & 0x1F);
+                    self.x = value & 0x3;
                 } else {
-                    self.t = ((self.t & 0xFC1F) | ((value as u16 & 0xF8) << 2));
-                    self.t = ((self.t & 0xF3FF) | ((value as u16 & 0x03) << 15));
+                    self.t = (self.t & 0xFC1F) | ((value as u16 & 0xF8) << 2);
+                    self.t = (self.t & 0xF3FF) | ((value as u16 & 0x03) << 15);
                 }
                 self.w = !self.w;
             }
@@ -557,9 +557,9 @@ impl Ppu {
             0x2006 => {
                 // PPUADDR $2006 aaaa aaaa
                 if !self.w {
-                    self.t = ((self.t & 0x00FF) | ((value as u16) << 8));
+                    self.t = (self.t & 0x00FF) | ((value as u16) << 8);
                 } else {
-                    self.t = ((self.t & 0xFF00) | value as u16);
+                    self.t = (self.t & 0xFF00) | value as u16;
                     self.v = self.t;
                 }
                 self.w = !self.w;
