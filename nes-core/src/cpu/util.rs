@@ -36,7 +36,7 @@ impl CPU6502 {
 
     /// Get a byte from the memory address.
     pub fn load8(&mut self, address: u16) -> u8 {
-        self.bus.borrow().read(address)
+        self.bus.borrow_mut().read(address)
     }
 
     /// Store a byte in the memory address.

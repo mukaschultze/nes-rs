@@ -23,22 +23,26 @@ pub struct NesConsole {
 }
 
 impl NesConsole {
-
     pub fn new(rom: Rc<RefCell<RomFile>>) -> NesConsole {
         let bus = Rc::new(RefCell::new(DataBus::new(rom.clone())));
         let cpu = Rc::new(RefCell::new(CPU6502::new(bus.clone())));
-        let ppu = Rc::new(RefCell::new(Ppu::new(cpu.clone(), bus.clone(), rom.clone())));
+        let ppu = Rc::new(RefCell::new(Ppu::new(
+            cpu.clone(),
+            bus.clone(),
+            rom.clone(),
+        )));
 
         bus.clone().borrow_mut().ppu = Some(ppu.clone());
 
         NesConsole { bus, cpu, ppu }
     }
 
-    pub fn tick(&mut self ) {
+    pub fn tick(&mut self) {
         self.cpu.borrow_mut().process_next_opcode();
         self.ppu.borrow_mut().Tick();
+        self.ppu.borrow_mut().Tick();
+        self.ppu.borrow_mut().Tick();
     }
-
 }
 
 fn check_instructions(log_path: &Path) {

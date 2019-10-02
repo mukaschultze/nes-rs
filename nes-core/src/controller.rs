@@ -1,0 +1,53 @@
+bitflags! {
+    #[derive(Default)]
+    pub struct ControllerDataLine: u8 {
+        const  A = 1 << 0;
+        const  B = 1 << 1;
+        const  Select = 1 << 2;
+        const  Start = 1 << 3;
+        const  Up = 1 << 4;
+        const  Down = 1 << 5;
+        const  Left = 1 << 6;
+        const  Right = 1 << 7;
+    }
+}
+
+pub struct Controller {
+    shift: u8,
+    strobe: bool,
+    pub data: ControllerDataLine,
+}
+
+impl Controller {
+    pub fn new() -> Self {
+        Self {
+            shift: 0,
+            strobe: false,
+            data: Default::default(),
+        }
+    }
+
+    // https://wiki.nesdev.com/w/index.php/Standard_controller#Input_.28.244016_write.29
+    pub fn input(&mut self, value: u8) {
+        self.strobe = (value & 1) != 0;
+
+        if self.strobe {
+            self.shift = 0;
+        }
+    }
+
+    // https://wiki.nesdev.com/w/index.php/Standard_controller#Output_.28.244016.2F.244017_read.29
+    pub fn output(&mut self) -> u8 {
+        if self.shift >= 8 {
+            return 1;
+        }
+
+        let result = (self.data.bits() >> self.shift) & 1;
+
+        if !self.strobe {
+            self.shift += 1;
+        }
+
+        result
+    }
+}
