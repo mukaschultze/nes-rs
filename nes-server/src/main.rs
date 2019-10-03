@@ -13,6 +13,7 @@ use std::rc::Rc;
 use nes_core::console::NesConsole;
 use nes_core::controller::Controller;
 use nes_core::controller::ControllerDataLine;
+use nes_core::palette;
 use nes_core::rom::rom_file::RomFile;
 use sdl2::rect::Point;
 
@@ -100,8 +101,14 @@ fn main() {
 
         for y in 0..height {
             for x in 0..width {
-                let pixel = output[(width * y + x) as usize];
-                let color = Color::RGB(pixel, pixel, pixel);
+                let color_idx = output[(width * y + x) as usize];
+
+                let rgb = palette::get_rgb_color(color_idx);
+                let r = (rgb & 0xFF0000 >> 16) as u8;
+                let g = (rgb & 0x00FF00 >> 8) as u8;
+                let b = (rgb & 0x0000FF) as u8;
+
+                let color = Color::RGB(r, g, b);
                 let point = Point::new(x as i32, y as i32);
 
                 canvas.set_draw_color(color);
