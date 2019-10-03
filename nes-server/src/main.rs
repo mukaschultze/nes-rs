@@ -74,17 +74,17 @@ fn main() {
             match evt {
                 Event::Quit { .. } => break 'main,
 
-                Event::KeyUp { keycode, .. } => {
-                    for map in &keymaps {
-                        if keycode == Some(map.0) {
-                            controller.data.insert(map.1);
+                Event::KeyDown { keycode, .. } => {
+                    for (src, dst) in &keymaps {
+                        if keycode == Some(*src) {
+                            controller.data.insert(*dst);
                         }
                     }
                 }
-                Event::KeyDown { keycode, .. } => {
-                    for map in &keymaps {
-                        if keycode == Some(map.0) {
-                            controller.data.remove(map.1);
+                Event::KeyUp { keycode, .. } => {
+                    for (src, dst) in &keymaps {
+                        if keycode == Some(*src) {
+                            controller.data.remove(*dst);
                         }
                     }
                 }
