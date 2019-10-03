@@ -544,7 +544,7 @@ impl Ppu {
                 // OAMDATA $2004 dddd dddd
                 self.oamMemory[self.oamAddress as usize] = value;
                 self.oamAddress += 1;
-                self.oamAddress %= self.oamMemory.len() as u8;
+                self.oamAddress &= self.oamMemory.len() as u8;
             }
 
             0x2005 => {
@@ -574,7 +574,7 @@ impl Ppu {
                 // PPUDATA $2007 dddd dddd
                 self.write_vram(self.v, value);
                 self.v += self.increment_mode as u16;
-                self.v %= 0x4000;
+                self.v &= 0x3FFF;
             }
 
             _ => unreachable!(),
@@ -599,7 +599,7 @@ impl Ppu {
                 let ret = self.vramBuffer;
                 self.vramBuffer = self.read_vram(self.v);
                 self.v += self.increment_mode;
-                self.v %= 0x4000;
+                self.v &= 0x3FFF;
                 if self.v >= 0x3F00 {
                     self.vramBuffer
                 } else {

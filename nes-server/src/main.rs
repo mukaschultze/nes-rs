@@ -6,6 +6,7 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
+
 use std::cell::RefCell;
 use std::env;
 use std::path::Path;
