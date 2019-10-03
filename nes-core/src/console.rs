@@ -102,9 +102,9 @@ fn check_instructions(log_path: &Path) {
         assert_eq!(reg_p, cpu.sr, "sr register\n{}\n", line);
         assert_eq!(reg_sp, cpu.sp, "sp register\n{}\n", line);
 
-        let (opcode, ll, hh) = cpu.process_next_opcode();
+        let (op, ll, hh) = cpu.process_next_opcode();
 
-        assert_eq!(opcode, opcode, "opcode\n{}\n", line);
+        assert_eq!(opcode, op, "opcode\n{}\n", line);
         assert_eq!(byte_lo, ll, "low byte\n{}\n", line);
         assert_eq!(byte_hi, hh, "high byte\n{}\n", line);
         // assert_eq!(reg_ppu_x,  , "ppu x\n{}\n", line);
