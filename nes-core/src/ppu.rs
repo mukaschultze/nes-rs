@@ -51,7 +51,7 @@ pub struct Ppu {
     spriteOverflow: u8,
     // #endregion
     /// OAM address port
-    oamAddress: u8,
+    pub oamAddress: u8,
 
     // https://wiki.nesdev.com/w/index.php/PPU_scrolling#PPU_internal_registers
     /// Current VRAM address (15 bits)
@@ -510,11 +510,6 @@ impl Ppu {
     // #region CPU mapped registers
     pub fn write_register_cpu_address(&mut self, address: u16, value: u8) {
         match address {
-            0x4014 => {
-                for _i in 0..=255 {
-                    // self.oamMemory[(i + self.oamAddress) as usize % 256] = self.bus.clone().borrow().read(((value as u16) << 8) + i as u16);
-                }
-            }
             0x2000 => {
                 // PPUCTRL $2000 VPHB SINN
                 self.nmi_enable = (value >> 7) & 1;
@@ -589,7 +584,6 @@ impl Ppu {
 
     pub fn read_register_cpu_address(&mut self, address: u16) -> u8 {
         match address {
-            0x4014 => 0, // OAMDMA $4014 is write only!
             0x2000 => 0, // PPUCTRL $2000 is write only!
             0x2001 => 0, // PPUMASK $2001 is write only!
             0x2002 => {

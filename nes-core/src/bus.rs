@@ -28,16 +28,15 @@ impl DataBus {
     /// https://wiki.nesdev.com/w/index.php/CPU_memory_map
     #[allow(clippy::match_overlapping_arm)]
     pub fn read(&mut self, address: u16) -> u8 {
-        let rom = self.rom.borrow();
-
         match address {
             0x0000..=0x1FFF => self.ram[address as usize % RAM_SIZE],
-            0x2000..=0x3FFF | 0x4014 => self
+            0x2000..=0x3FFF => self
                 .ppu
                 .as_ref()
                 .unwrap()
                 .borrow_mut()
                 .read_register_cpu_address(address),
+            0x4014 => 0, // OAMDMA $4014 is write only!
             0x4016 => match self.controller0.as_mut() {
                 Some(controller) => controller.output(),
                 None => 0,
@@ -49,23 +48,32 @@ impl DataBus {
             0x4000..=0x401F => 0, // APU and IO registers
             0x4020..=0x5FFF => 0, // Cartridge space
             0x6000..=0x7FFF => 0, // Battery Backed Save or Work RAM
-            0x8000..=0xFFFF => rom.read(address),
+            0x8000..=0xFFFF => {
+                let rom = self.rom.borrow();
+                rom.read(address)
+            }
         }
     }
 
     /// https://wiki.nesdev.com/w/index.php/CPU_memory_map
     #[allow(clippy::match_overlapping_arm)]
     pub fn write(&mut self, address: u16, value: u8) {
-        let rom = self.rom.borrow_mut();
-
         match address {
             0x0000..=0x1FFF => self.ram[address as usize % RAM_SIZE] = value,
-            0x2000..=0x3FFF | 0x4014 => self
+            0x2000..=0x3FFF => self
                 .ppu
                 .as_ref()
                 .unwrap()
                 .borrow_mut()
                 .write_register_cpu_address(address, value),
+            0x4014 => {
+                for i in 0..=255 {
+                    let v = self.read(((value as u16) << 8) + i as u16);
+                    let mut ppu = self.ppu.as_ref().unwrap().borrow_mut();
+                    let oam_addr = ppu.oamAddress;
+                    ppu.oamMemory[(i + oam_addr) as usize % 256] = v;
+                }
+            }
             0x4016 => match self.controller0.as_mut() {
                 Some(controller) => controller.input(value),
                 None => {}
@@ -77,7 +85,10 @@ impl DataBus {
             0x4000..=0x401F => {} // APU and IO registers
             0x4020..=0x5FFF => {} // Cartridge space
             0x6000..=0x7FFF => {} // Battery Backed Save or Work RAM
-            0x8000..=0xFFFF => rom.write(address, value),
+            0x8000..=0xFFFF => {
+                let rom = self.rom.borrow_mut();
+                rom.write(address, value)
+            }
         }
     }
 }
