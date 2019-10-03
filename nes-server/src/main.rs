@@ -47,7 +47,8 @@ fn main() {
 
     let window = video_subsystem
         .window("NES", width, height)
-        // .opengl()
+        .resizable()
+        .opengl()
         .build()
         .unwrap();
 
@@ -56,6 +57,8 @@ fn main() {
         .present_vsync() // this means the screen cannot render faster than your display rate (usually 60Hz or 144Hz)
         .build()
         .unwrap();
+
+    canvas.set_logical_size(width, height).unwrap();
 
     let keymaps = [
         (Keycode::A, ControllerDataLine::A),
@@ -100,7 +103,12 @@ fn main() {
             }
         }
 
-        canvas.set_draw_color(Color::RGB(255, 0, 255));
+        let clear_rgb = palette::get_rgb_color(nes.ppu.borrow().paletteRAM[0]);
+        let r = ((clear_rgb >> 16) & 0xFF) as u8;
+        let g = ((clear_rgb >> 8) & 0xFF) as u8;
+        let b = (clear_rgb & 0xFF) as u8;
+
+        canvas.set_draw_color(Color::RGB(r, g, b));
         canvas.clear();
 
         let output = &nes.ppu.borrow().output;

@@ -65,7 +65,7 @@ pub struct Ppu {
 
     pub output: [u8; 256 * 240], // 256x240 pixels
     vram: [u8; 0x4000],          // 16kb
-    paletteRAM: [u8; 32],
+    pub paletteRAM: [u8; 32],
     vramBuffer: u8,
 
     // #region Debug
