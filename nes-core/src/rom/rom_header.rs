@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct RomHeader {
     pub nes: [u8; 4],
     pub prg_rom_size: u8,

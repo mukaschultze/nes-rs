@@ -32,7 +32,19 @@ impl NesConsole {
             rom.clone(),
         )));
 
-        bus.clone().borrow_mut().ppu = Some(ppu.clone());
+        {
+            let cpu = cpu.clone();
+            let bus = bus.clone();
+            let mut bus_mut = bus.borrow_mut();
+            let mut cpu_mut = cpu.borrow_mut();
+
+            bus_mut.ppu = Some(ppu.clone());
+
+            let pc_high = bus_mut.read(0xFFFD);
+            let pc_low = bus_mut.read(0xFFFC);
+
+            cpu_mut.pc = join_bytes!(pc_high, pc_low);
+        }
 
         NesConsole { bus, cpu, ppu }
     }
@@ -54,12 +66,10 @@ fn check_instructions(log_path: &Path) {
     let rom = Rc::new(RefCell::new(RomFile::new(rom_path)));
     let nes = NesConsole::new(rom);
 
-    // let pc_high = nes.cpu.bus.read(0xFFFD);
-    // let pc_low = nes.cpu.bus.read(0xFFFC);
-
-    // nes.cpu.pc = join_bytes!(pc_high, pc_low);
-
     let mut cpu = nes.cpu.borrow_mut();
+
+    cpu.pc = 0xC000;
+
     let regex = Regex::new(r"([0-9A-F]{4})  ([0-9A-F]{2}) ([0-9A-F]{2}|\s{2}) ([0-9A-F]{2}|\s{2}) [ \*].{32}A:([0-9A-F]{2}) X:([0-9A-F]{2}) Y:([0-9A-F]{2}) P:([0-9A-F]{2}) SP:([0-9A-F]{2}) PPU:\s*(\d*),\s*(\d*) CYC:(\d+)").unwrap();
 
     for line in log_reader.lines().map(|l| l.unwrap()) {
@@ -92,11 +102,11 @@ fn check_instructions(log_path: &Path) {
         assert_eq!(reg_p, cpu.sr, "sr register\n{}\n", line);
         assert_eq!(reg_sp, cpu.sp, "sp register\n{}\n", line);
 
-        let las_instr = cpu.process_next_opcode();
+        let (opcode, ll, hh) = cpu.process_next_opcode();
 
-        assert_eq!(opcode, las_instr.0, "opcode\n{}\n", line);
-        assert_eq!(byte_lo, las_instr.1, "low byte\n{}\n", line);
-        assert_eq!(byte_hi, las_instr.2, "high byte\n{}\n", line);
+        assert_eq!(opcode, opcode, "opcode\n{}\n", line);
+        assert_eq!(byte_lo, ll, "low byte\n{}\n", line);
+        assert_eq!(byte_hi, hh, "high byte\n{}\n", line);
         // assert_eq!(reg_ppu_x,  , "ppu x\n{}\n", line);
         // assert_eq!(reg_ppu_y,  , "ppu y\n{}\n", line);
         // assert_eq!(reg_cyc, cpu.ticks , "clock cycles\n{}\n", line);

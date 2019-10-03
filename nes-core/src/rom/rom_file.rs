@@ -14,7 +14,6 @@ impl RomFile {
     pub fn new(path: &Path) -> Self {
         let display = path.display();
 
-        // Open the path in read-only mode, returns `io::Result<File>`
         let mut file = match File::open(&path) {
             Ok(file) => file,
             Err(why) => panic!("Couldn't open {}: {}", display, why.description()),
@@ -28,6 +27,8 @@ impl RomFile {
         };
 
         let header = RomHeader::new(header_buf);
+
+        println!("Loaded ROM header: {:?}", header);
 
         let pgr_data = &mut vec![0u8; 16384 * header.prg_rom_size as usize];
         let chr_data = &mut vec![0u8; 8192 * header.chr_rom_size as usize];
