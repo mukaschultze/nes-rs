@@ -37,7 +37,7 @@ impl DataBus {
                 .as_ref()
                 .unwrap()
                 .borrow_mut()
-                .ReadRegisterCPUAddress(address),
+                .read_register_cpu_address(address),
             0x4016 => match self.controller0.as_mut() {
                 Some(controller) => controller.output(),
                 None => 0,
@@ -65,7 +65,7 @@ impl DataBus {
                 .as_ref()
                 .unwrap()
                 .borrow_mut()
-                .WriteRegisterCPUAddress(address, value),
+                .write_register_cpu_address(address, value),
             0x4016 => match self.controller0.as_mut() {
                 Some(controller) => controller.input(value),
                 None => {}

@@ -39,12 +39,13 @@ impl NesConsole {
 
     pub fn tick(&mut self) {
         self.cpu.borrow_mut().process_next_opcode();
-        self.ppu.borrow_mut().Tick();
-        self.ppu.borrow_mut().Tick();
-        self.ppu.borrow_mut().Tick();
+        self.ppu.borrow_mut().tick();
+        self.ppu.borrow_mut().tick();
+        self.ppu.borrow_mut().tick();
     }
 }
 
+#[allow(dead_code)]
 fn check_instructions(log_path: &Path) {
     let log_file = File::open(log_path).unwrap();
     let log_reader = BufReader::new(log_file);

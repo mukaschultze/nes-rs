@@ -1,44 +1,47 @@
-use crate::rom::rom_file::RomFile;
 use crate::bus::DataBus;
 use crate::cpu::CPU6502;
-use std::rc::Rc;
+use crate::rom::rom_file::RomFile;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 /// https://wiki.nesdev.com/w/index.php/PPU
 #[allow(non_snake_case)]
 pub struct Ppu {
+    // TODO: Use bitflags
     // #region PPUCTRL $2000
     /// Generate an NMI at the start of the vertical blanking interval (0: off; 1: on)
-    nmiEnable: u8,
+    nmi_enable: u8,
     /// PPU master/slave select (0: read backdrop from EXT pins; 1: output color on EXT pins)
-    PPU_master_slave: u8,
+    ppu_master_slave: u8,
     /// Sprite size (0: 8x8 pixels; 1: 8x16 pixels)
-    spriteHeight: u8,
+    sprite_height: u8,
     /// Background pattern table address (0: 0x0000; 1: 0x1000)
-    backgroundTileSelect: u16,
+    background_tile_select: u16,
     /// Sprite pattern table address for 8x8 sprites (0: 0x0000; 1: 0x1000; ignored in 8x16 mode)
-    spriteTileSelect: u16,
+    sprite_tile_select: u16,
     /// VRAM address increment per CPU read/write of PPUDATA (0: add 1, going across; 1: add 32, going down)
-    incrementMode: u16,
+    increment_mode: u16,
     /// Base nametable address (0 = 0x2000; 1 = 0x2400; 2 = 0x2800; 3 = 0x2C00)
-    nametableSelect: u16,
+    nametable_select: u16,
     // #endregion
 
+    // TODO: Use bitflags
     // #region PPUMASK $2001
     /// Emphasize red, green, blue
-    colorEmphasisBGR: u8,
+    color_emphasis_bgr: u8,
     /// 1: Show sprites
-    spriteEnable: u8,
+    sprite_enable: u8,
     /// 1: Show background
-    backgroundEnable: u8,
+    background_enable: u8,
     /// 1: Show sprites in leftmost 8 pixels of screen, 0: Hide
-    spriteLeftColumnEnable: u8,
+    sprite_left_column_enable: u8,
     /// 1: Show background in leftmost 8 pixels of screen, 0: Hide
-    backgroundLeftColumnEnable: u8,
+    background_left_column_enable: u8,
     /// Greyscale (0: normal color, 1: produce a greyscale display)
     greyscale: u8,
     // #endregion
 
+    // TODO: Use bitflags
     // #region PPUSTATUS $2002
     /// Vertical blank has started.
     vblank: u8,
@@ -100,30 +103,35 @@ pub struct Ppu {
     /// 8 counters - These contain the X positions for up to 8 sprites.
     spriteXPos: [i16; 8],
     // #endregion
+    #[allow(dead_code)]
     oamData: u8,
-
     n: u8,
     spriteCount: u8,
 
     cpu: Rc<RefCell<CPU6502>>,
+    #[allow(dead_code)]
     bus: Rc<RefCell<DataBus>>,
 }
 
 impl Ppu {
-    pub fn new(cpu: Rc<RefCell<CPU6502>>,bus: Rc<RefCell<DataBus>>, rom: Rc<RefCell<RomFile>>) -> Self {
+    pub fn new(
+        cpu: Rc<RefCell<CPU6502>>,
+        bus: Rc<RefCell<DataBus>>,
+        rom: Rc<RefCell<RomFile>>,
+    ) -> Self {
         let mut ppu = Ppu {
-           nmiEnable: 0,
-            PPU_master_slave: 0,
-            spriteHeight: 0,
-            backgroundTileSelect: 0,
-            spriteTileSelect: 0,
-            incrementMode: 0,
-            nametableSelect: 0,
-            colorEmphasisBGR: 0,
-            spriteEnable: 0,
-            backgroundEnable: 0,
-            spriteLeftColumnEnable: 0,
-            backgroundLeftColumnEnable: 0,
+            nmi_enable: 0,
+            ppu_master_slave: 0,
+            sprite_height: 0,
+            background_tile_select: 0,
+            sprite_tile_select: 0,
+            increment_mode: 0,
+            nametable_select: 0,
+            color_emphasis_bgr: 0,
+            sprite_enable: 0,
+            background_enable: 0,
+            sprite_left_column_enable: 0,
+            background_left_column_enable: 0,
             greyscale: 0,
             vblank: 0,
             sprite0Hit: 0,
@@ -171,7 +179,7 @@ impl Ppu {
         ppu
     }
 
-    pub fn ReadVram(&self, mut addr: u16) -> u8 {
+    pub fn read_vram(&self, mut addr: u16) -> u8 {
         match addr {
             0x3000..=0x3EFF => self.vram[(addr as usize - 0x1000) & 0x3FFF], // Mirrors of $2000-$2EFF
             0x3F00..=0x3FFF => {
@@ -185,7 +193,7 @@ impl Ppu {
         }
     }
 
-    pub fn WriteVram(&mut self, mut addr: u16, value: u8) {
+    pub fn write_vram(&mut self, mut addr: u16, value: u8) {
         match addr {
             0x3000..=0x3EFF => self.vram[(addr as usize - 0x1000) & 0x3FFF] = value, // Mirrors of $2000-$2EFF
             0x3F00..=0x3FFF => {
@@ -201,49 +209,50 @@ impl Ppu {
 
     /// https://wiki.nesdev.com/w/index.php/PPU_sprite_evaluation
     /// Based off on https://github.com/ulfalizer/nesalizer/blob/master/src/ppu.cpp
-    fn SpriteEvaluation(&mut self) {
+    fn sprite_evaluation(&mut self) {
         if self.dot != 256 {
             return;
         }
 
-        let mut spriteCount = 0;
-        let mut spriteOverflow = 0;
-        let yPos = self.scanline;
+        let mut sprite_count = 0;
+        #[allow(unused_variables)]
+        let sprite_overflow = 0;
+        let y_pos = self.scanline;
 
         for i in self.oamAddress as usize..256 {
             if i % 4 != 0 {
                 continue;
             }
 
-            let spriteYTop = self.oamMemory[i];
-            let mut offset = yPos as i16 - spriteYTop as i16;
+            let sprite_y_top = self.oamMemory[i];
+            let mut offset = y_pos as i16 - sprite_y_top as i16;
 
             // If this sprite is on the next scanline, copy it to the _sprites array for rendering
-            if offset < self.spriteHeight as i16 && offset >= 0 {
-                if spriteCount == 8 {
-                    spriteOverflow = 1;
+            if offset < self.sprite_height as i16 && offset >= 0 {
+                if sprite_count == 8 {
+                    // sprite_overflow = 1;
                 } else {
-                    let spriteIdx = self.oamMemory[i + 1] as u16;
-                    self.spriteAttributes[spriteCount] = self.oamMemory[i + 2];
+                    let sprite_idx = self.oamMemory[i + 1] as u16;
+                    self.spriteAttributes[sprite_count] = self.oamMemory[i + 2];
 
-                    if (self.spriteAttributes[spriteCount] & 0x80) != 0 {
+                    if (self.spriteAttributes[sprite_count] & 0x80) != 0 {
                         // Flip vertically
                         offset = 7 - offset;
                     }
 
-                    self.spritePatternLo[spriteCount] =
-                        self.ReadVram((spriteIdx * 16 + 0 + offset as u16) | self.spriteTileSelect);
-                    self.spritePatternHi[spriteCount] =
-                        self.ReadVram((spriteIdx * 16 + 8 + offset as u16) | self.spriteTileSelect);
-                    self.spriteXPos[spriteCount] = self.oamMemory[i + 3] as i16;
-                    spriteCount += 1;
+                    self.spritePatternLo[sprite_count] = self
+                        .read_vram((sprite_idx * 16 + 0 + offset as u16) | self.sprite_tile_select);
+                    self.spritePatternHi[sprite_count] = self
+                        .read_vram((sprite_idx * 16 + 8 + offset as u16) | self.sprite_tile_select);
+                    self.spriteXPos[sprite_count] = self.oamMemory[i + 3] as i16;
+                    sprite_count += 1;
                 }
             }
         }
     }
 
     /// https://wiki.nesdev.com/w/index.php/PPU_scrolling#Coarse_X_increment
-    fn IncrementHorizontal(&mut self) {
+    fn inc_horizontal(&mut self) {
         if (self.v & 0x001F) == 31 {
             // if coarse X == 31
             self.v &= !0x001F; // coarse X = 0
@@ -254,7 +263,7 @@ impl Ppu {
     }
 
     /// https://wiki.nesdev.com/w/index.php/PPU_scrolling#Y_increment
-    fn IncrementVertical(&mut self) {
+    fn inc_vertical(&mut self) {
         if (self.v & 0x7000) != 0x7000 {
             // if fine Y < 7
             self.v += 0x1000; // increment fine Y
@@ -262,10 +271,10 @@ impl Ppu {
             self.v &= !0x7000; // fine Y = 0
             let mut y = (self.v & 0x03E0) >> 5; // let y = coarse Y
             if y == 29 {
-                y = 0; // coarse Y = 0
+                // y = 0; // coarse Y = 0
                 self.v ^= 0x0800; // switch vertical nametable
             } else if y == 31 {
-                y = 0; // coarse Y = 0, nametable not switched
+                // y = 0; // coarse Y = 0, nametable not switched
             } else {
                 y += 1; // increment coarse Y
                 self.v &= !0x03E0;
@@ -274,79 +283,78 @@ impl Ppu {
         }
     }
 
-    fn RenderBackground(&mut self) {
-        let xPos = self.dot - 1;
-        let yPos = self.scanline;
-        let fineX = 0;
+    fn render_background(&mut self) {
+        let x_pos = self.dot - 1;
+        let y_pos = self.scanline;
+        let fine_x = 0;
 
-        let mut pixel = ((self.bitmap >> (fineX * 2)) & 0x3) as u8;
+        let mut pixel = ((self.bitmap >> (fine_x * 2)) & 0x3) as u8;
         let quadrant = (((self.v >> 5) & 0x2) << 1) | (0x2 - (self.v & 0x2));
 
         if self.debugAttributeQuadrants {
             self.palette = 0xE4; // Debug quadrants
         }
 
-        let atData = (self.palette >> quadrant) & 0x3;
-        let mut color = pixel;
+        let at_data = (self.palette >> quadrant) & 0x3;
 
         if self.debugAttributes {
             pixel = 1; // Debug attribute tables
         }
 
-        color = if pixel == 0 {
-            self.ReadVram(0x3F00) // Background color
+        let color = if pixel == 0 {
+            self.read_vram(0x3F00) // Background color
         } else {
-            self.ReadVram(0x3F00 + (atData << 2) + pixel as u16)
+            self.read_vram(0x3F00 + (at_data << 2) + pixel as u16)
         };
 
         if self.debugRenderBG {
-            self.output[(yPos * 256 + xPos) as usize] = color;
+            self.output[(y_pos * 256 + x_pos) as usize] = color;
         }
     }
 
-    fn RenderSprites(&mut self) {
-        let xPos = self.dot - 1;
-        let yPos = self.scanline;
+    fn render_sprites(&mut self) {
+        let x_pos = self.dot - 1;
+        let y_pos = self.scanline;
 
         for i in 0..self.spriteXPos.len() {
             self.spriteXPos[i] -= 1;
             if self.spriteXPos[i] <= 0 && self.spriteXPos[i] > -8 {
                 // Sprite becomes active
 
-                let mut bitIndex = 7 + self.spriteXPos[i];
+                let mut bit_index = 7 + self.spriteXPos[i];
 
                 if (self.spriteAttributes[i] & 0x40) != 0 {
                     // Flip horizontally
-                    bitIndex = 7 - bitIndex;
+                    bit_index = 7 - bit_index;
                 }
 
-                let patternLo = (self.spritePatternLo[i] >> bitIndex) & 1;
-                let patternHi = (self.spritePatternHi[i] >> bitIndex) & 1;
-                let pattern = (patternHi << 1) | patternLo;
+                let pattern_lo = (self.spritePatternLo[i] >> bit_index) & 1;
+                let pattern_hi = (self.spritePatternHi[i] >> bit_index) & 1;
+                let pattern = (pattern_hi << 1) | pattern_lo;
 
                 if pattern != 0 {
-                    let atData = (self.spriteAttributes[i] & 0x3) + 4;
-                    let color = self.ReadVram(0x3F00 + (atData << 2) as u16 + pattern as u16);
+                    let at_data = (self.spriteAttributes[i] & 0x3) + 4;
+                    let color = self.read_vram(0x3F00 + (at_data << 2) as u16 + pattern as u16);
 
                     if self.debugRenderSprites {
-                        self.output[(yPos * 256 + xPos) as usize] = color;
+                        self.output[(y_pos * 256 + x_pos) as usize] = color;
                     }
                 }
             }
         }
     }
 
-    fn IncrementDot(&mut self) {
-        let preRenderLine = self.scanline == 261;
+    fn inc_dot(&mut self) {
+        let pre_render_line = self.scanline == 261;
 
         if self.dot == 1 && self.scanline == 241 {
             self.vblank = 1;
-            if self.nmiEnable != 0{
+            if self.nmi_enable != 0 {
                 self.cpu.borrow_mut().request_nmi();
             }
         }
 
-        if preRenderLine && self.dot == 1 {
+        if pre_render_line && self.dot == 1 {
             self.vblank = 0;
             self.sprite0Hit = 0;
             self.spriteOverflow = 0;
@@ -365,54 +373,56 @@ impl Ppu {
     }
 
     /// https://wiki.nesdev.com/w/index.php/File:Ntsc_timing.png
-    pub fn Tick(&mut self) {
-        let xPos = self.dot - 1;
-        let yPos = self.scanline;
+    pub fn tick(&mut self) {
+        let x_pos = self.dot - 1;
+        let y_pos = self.scanline;
 
-        let renderingEnabled = (self.backgroundEnable != 0) || (self.spriteEnable != 0);
+        let rendering_enabled = (self.background_enable != 0) || (self.sprite_enable != 0);
         let phase = self.dot % 8;
-        let renderCycle = self.dot >= 1 && self.dot <= 256;
-        let visibleScanline = self.scanline <= 239;
-        let preRenderLine = self.scanline == 261;
-        let fetchScanline = visibleScanline || preRenderLine;
-        let fetchCycle = fetchScanline && (renderCycle || self.dot >= 321);
-        let shiftCycle = (self.dot >= 2 && self.dot <= 257) || (self.dot >= 322 && self.dot <= 337);
-        let fineY = (self.v >> 12) & 0x7;
+        let render_cycle = self.dot >= 1 && self.dot <= 256;
+        let visible_scanline = self.scanline <= 239;
+        let pre_render_line = self.scanline == 261;
+        let fetch_scanline = visible_scanline || pre_render_line;
+        let fetch_cycle = fetch_scanline && (render_cycle || self.dot >= 321);
+        let shift_cycle =
+            (self.dot >= 2 && self.dot <= 257) || (self.dot >= 322 && self.dot <= 337);
+        let fine_y = (self.v >> 12) & 0x7;
 
-        if !renderingEnabled && visibleScanline && renderCycle {
-            self.output[(yPos * 256 + xPos) as usize] = self.ReadVram(0x3F00); // Background color
+        if !rendering_enabled && visible_scanline && render_cycle {
+            self.output[(y_pos * 256 + x_pos) as usize] = self.read_vram(0x3F00);
+            // Background color
         }
 
-        if renderingEnabled {
-            if renderCycle && visibleScanline {
-                self.RenderBackground();
-                self.RenderSprites();
+        if rendering_enabled {
+            if render_cycle && visible_scanline {
+                self.render_background();
+                self.render_sprites();
 
                 // DEBUG LINES
-                if self.debug8Lines && (yPos % 8 == 0 || xPos % 8 == 0) {
-                    self.output[(yPos * 256 + xPos) as usize] = 0x0C;
+                if self.debug8Lines && (y_pos % 8 == 0 || x_pos % 8 == 0) {
+                    self.output[(y_pos * 256 + x_pos) as usize] = 0x0C;
                 }
-                if self.debug32Lines && (yPos % 32 == 0 || xPos % 32 == 0) {
-                    self.output[(yPos * 256 + xPos) as usize] = 0x21;
+                if self.debug32Lines && (y_pos % 32 == 0 || x_pos % 32 == 0) {
+                    self.output[(y_pos * 256 + x_pos) as usize] = 0x21;
                 }
             }
 
-            if shiftCycle {
+            if shift_cycle {
                 self.bitmap >>= 2;
             }
 
-            if fetchCycle {
+            if fetch_cycle {
                 match phase {
                     1 =>
                     // Fetch a nametable entry from $2000-$2FBF.
                     {
-                        self.ntTileLatch = self.ReadVram(0x2000 | (self.v & 0x0FFF))
+                        self.ntTileLatch = self.read_vram(0x2000 | (self.v & 0x0FFF))
                     }
                     3 =>
                     // Fetch the corresponding attribute table entry from $23C0-$2FFF and increment the current VRAM address within the same row.
                     // https://wiki.nesdev.com/w/index.php/PPU_scrolling#Tile_and_attribute_fetching
                     {
-                        self.atRegisterLatch = self.ReadVram(
+                        self.atRegisterLatch = self.read_vram(
                             0x23C0
                                 | (self.v & 0x0C00)
                                 | ((self.v >> 4) & 0x38)
@@ -423,16 +433,17 @@ impl Ppu {
                     5 =>
                     // Fetch the low-order byte of an 8x1 pixel sliver of pattern table from $0000-$0FF7 or $1000-$1FF7.
                     {
-                        self.loPatternLatch = self.ReadVram(
-                            self.backgroundTileSelect | (self.ntTileLatch as u16 * 16 + fineY),
+                        self.loPatternLatch = self.read_vram(
+                            self.background_tile_select | (self.ntTileLatch as u16 * 16 + fine_y),
                         )
                     }
 
                     7 =>
                     // Fetch the high-order byte of this sliver from an address 8 bytes higher.
                     {
-                        self.hiPatternLatch = self.ReadVram(
-                            self.backgroundTileSelect | (self.ntTileLatch as u16 * 16 + fineY + 8),
+                        self.hiPatternLatch = self.read_vram(
+                            self.background_tile_select
+                                | (self.ntTileLatch as u16 * 16 + fine_y + 8),
                         )
                     }
 
@@ -441,9 +452,9 @@ impl Ppu {
                         let mut data = 0;
 
                         for i in 0..8 {
-                            let patternLo = (self.loPatternLatch >> i) & 1;
-                            let patternHi = (self.hiPatternLatch >> i) & 1;
-                            let pattern = (patternHi << 1) | patternLo;
+                            let pattern_lo = (self.loPatternLatch >> i) & 1;
+                            let pattern_hi = (self.hiPatternLatch >> i) & 1;
+                            let pattern = (pattern_hi << 1) | pattern_lo;
 
                             data <<= 2;
                             data |= pattern;
@@ -454,9 +465,9 @@ impl Ppu {
                         self.bitmap &= 0xFFFF;
                         self.bitmap |= (data as u32) << 16;
 
-                        self.IncrementHorizontal();
+                        self.inc_horizontal();
                         if self.dot == 256 {
-                            self.IncrementVertical();
+                            self.inc_vertical();
                         }
                     }
 
@@ -465,7 +476,7 @@ impl Ppu {
             }
 
             // #region Sprites
-            if visibleScanline || preRenderLine {
+            if visible_scanline || pre_render_line {
                 match self.dot {
                     1 => {
                         // Clear OAM
@@ -475,7 +486,7 @@ impl Ppu {
                         self.n = 0;
                         self.spriteCount = 0;
                     }
-                    65..=256 => self.SpriteEvaluation(),
+                    65..=256 => self.sprite_evaluation(),
                     257..=320 => {}     // Sprite fetches
                     321..=340 | 0 => {} //  Background render pipeline initialization
                     _ => {}
@@ -487,17 +498,17 @@ impl Ppu {
                 // hori (v) = hori (t)
                 self.v = (self.v & 0x7BE0) | (self.t & 0x041F);
             }
-            if self.dot >= 280 && self.dot <= 304 && preRenderLine {
+            if self.dot >= 280 && self.dot <= 304 && pre_render_line {
                 // vert (v) = vert (t)
                 self.v = (self.v & 0x041F) | (self.t & 0x7BE0);
             }
         }
 
-        self.IncrementDot();
+        self.inc_dot();
     }
 
     // #region CPU mapped registers
-    pub fn WriteRegisterCPUAddress(&mut self, address: u16, value: u8) {
+    pub fn write_register_cpu_address(&mut self, address: u16, value: u8) {
         match address {
             0x4014 => {
                 for _i in 0..=255 {
@@ -506,23 +517,23 @@ impl Ppu {
             }
             0x2000 => {
                 // PPUCTRL $2000 VPHB SINN
-                self.nmiEnable = (value >> 7) & 1;
-                self.PPU_master_slave = (value >> 6) & 1;
-                self.spriteHeight = ((value >> 5) & 1) * 8 + 8; // 8x16 or 8x8
-                self.backgroundTileSelect = ((value as u16 >> 4) & 1) * 0x1000;
-                self.spriteTileSelect = ((value as u16 >> 3) & 1) * 0x1000;
-                self.incrementMode = ((value as u16 >> 2) & 1) * 31 + 1;
-                self.nametableSelect = (value as u16 & 0x03) * 0x400 + 0x2000; // !MIGHT REMOVE
+                self.nmi_enable = (value >> 7) & 1;
+                self.ppu_master_slave = (value >> 6) & 1;
+                self.sprite_height = ((value >> 5) & 1) * 8 + 8; // 8x16 or 8x8
+                self.background_tile_select = ((value as u16 >> 4) & 1) * 0x1000;
+                self.sprite_tile_select = ((value as u16 >> 3) & 1) * 0x1000;
+                self.increment_mode = ((value as u16 >> 2) & 1) * 31 + 1;
+                self.nametable_select = (value as u16 & 0x03) * 0x400 + 0x2000; // !MIGHT REMOVE
                 self.t = (self.t & 0xF3FF) | ((value as u16 & 0x3) << 10);
             }
 
             0x2001 => {
                 // PPUMASK $2001 BGRs bMmG
-                self.colorEmphasisBGR = (value >> 5) & 3;
-                self.spriteEnable = (value >> 4) & 1;
-                self.backgroundEnable = (value >> 3) & 1;
-                self.spriteLeftColumnEnable = (value >> 2) & 1;
-                self.backgroundLeftColumnEnable = (value >> 1) & 1;
+                self.color_emphasis_bgr = (value >> 5) & 3;
+                self.sprite_enable = (value >> 4) & 1;
+                self.background_enable = (value >> 3) & 1;
+                self.sprite_left_column_enable = (value >> 2) & 1;
+                self.background_left_column_enable = (value >> 1) & 1;
                 self.greyscale = value & 1;
             }
 
@@ -567,8 +578,8 @@ impl Ppu {
 
             0x2007 => {
                 // PPUDATA $2007 dddd dddd
-                self.WriteVram(self.v, value);
-                self.v += self.incrementMode as u16;
+                self.write_vram(self.v, value);
+                self.v += self.increment_mode as u16;
                 self.v %= 0x4000;
             }
 
@@ -576,7 +587,7 @@ impl Ppu {
         };
     }
 
-  pub  fn ReadRegisterCPUAddress(&mut self, address: u16) -> u8 {
+    pub fn read_register_cpu_address(&mut self, address: u16) -> u8 {
         match address {
             0x4014 => 0, // OAMDMA $4014 is write only!
             0x2000 => 0, // PPUCTRL $2000 is write only!
@@ -593,8 +604,8 @@ impl Ppu {
             0x2007 => {
                 // PPUDATA $2007 dddd dddd
                 let ret = self.vramBuffer;
-                self.vramBuffer = self.ReadVram(self.v);
-                self.v += self.incrementMode;
+                self.vramBuffer = self.read_vram(self.v);
+                self.v += self.increment_mode;
                 self.v %= 0x4000;
                 if self.v >= 0x3F00 {
                     self.vramBuffer

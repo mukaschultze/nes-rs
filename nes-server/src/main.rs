@@ -50,15 +50,15 @@ fn main() {
         .build()
         .unwrap();
 
-    let keyMaps = [
+    let keymaps = [
         (Keycode::A, ControllerDataLine::A),
         (Keycode::S, ControllerDataLine::B),
-        (Keycode::Return, ControllerDataLine::Select),
-        (Keycode::Space, ControllerDataLine::Start),
-        (Keycode::Up, ControllerDataLine::Up),
-        (Keycode::Down, ControllerDataLine::Down),
-        (Keycode::Left, ControllerDataLine::Left),
-        (Keycode::Right, ControllerDataLine::Right),
+        (Keycode::Return, ControllerDataLine::SELECT),
+        (Keycode::Space, ControllerDataLine::START),
+        (Keycode::Up, ControllerDataLine::UP),
+        (Keycode::Down, ControllerDataLine::DOWN),
+        (Keycode::Left, ControllerDataLine::LEFT),
+        (Keycode::Right, ControllerDataLine::RIGHT),
     ];
 
     'main: loop {
@@ -74,14 +74,14 @@ fn main() {
                 Event::Quit { .. } => break 'main,
 
                 Event::KeyUp { keycode, .. } => {
-                    for map in &keyMaps {
+                    for map in &keymaps {
                         if keycode == Some(map.0) {
                             controller.data.insert(map.1);
                         }
                     }
                 }
                 Event::KeyDown { keycode, .. } => {
-                    for map in &keyMaps {
+                    for map in &keymaps {
                         if keycode == Some(map.0) {
                             controller.data.remove(map.1);
                         }
@@ -105,7 +105,7 @@ fn main() {
                 let point = Point::new(x as i32, y as i32);
 
                 canvas.set_draw_color(color);
-                canvas.draw_point(point);
+                canvas.draw_point(point).unwrap();
             }
         }
 
