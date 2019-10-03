@@ -317,10 +317,9 @@ impl Ppu {
         let y_pos = self.scanline;
 
         for i in 0..self.spriteXPos.len() {
-            self.spriteXPos[i] -= 1;
+            self.spriteXPos[i] = unchecked_sub!(self.spriteXPos[i], 1);
             if self.spriteXPos[i] <= 0 && self.spriteXPos[i] > -8 {
                 // Sprite becomes active
-
                 let mut bit_index = 7 + self.spriteXPos[i];
 
                 if (self.spriteAttributes[i] & 0x40) != 0 {
@@ -374,8 +373,8 @@ impl Ppu {
 
     /// https://wiki.nesdev.com/w/index.php/File:Ntsc_timing.png
     pub fn tick(&mut self) {
-        let x_pos = self.dot - 1;
-        let y_pos = self.scanline;
+        let x_pos = self.dot as i32 - 1;
+        let y_pos = self.scanline as i32;
 
         let rendering_enabled = (self.background_enable != 0) || (self.sprite_enable != 0);
         let phase = self.dot % 8;
@@ -389,8 +388,8 @@ impl Ppu {
         let fine_y = (self.v >> 12) & 0x7;
 
         if !rendering_enabled && visible_scanline && render_cycle {
-            self.output[(y_pos * 256 + x_pos) as usize] = self.read_vram(0x3F00);
             // Background color
+            self.output[(y_pos * 256 + x_pos) as usize] = self.read_vram(0x3F00);
         }
 
         if rendering_enabled {
