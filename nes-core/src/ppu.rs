@@ -448,7 +448,7 @@ impl Ppu {
 
                     0 => {
                         // Turn the attribute data and the pattern table data into palette indices, and combine them with data from sprite data using priority.
-                        let mut data = 0;
+                        let mut data = 0u16;
 
                         for i in 0..8 {
                             let pattern_lo = (self.loPatternLatch >> i) & 1;
@@ -456,7 +456,7 @@ impl Ppu {
                             let pattern = (pattern_hi << 1) | pattern_lo;
 
                             data <<= 2;
-                            data |= pattern;
+                            data |= pattern as u16;
                         }
 
                         self.palette >>= 8;
