@@ -7,6 +7,7 @@ use sdl2::pixels::Color;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 use std::cell::RefCell;
+use std::env;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -18,14 +19,15 @@ use nes_core::rom::rom_file::RomFile;
 use sdl2::rect::Point;
 
 fn main() {
-    // let rom_path = Path::new("../nes-core/test/nestest.nes");
-    let rom_path = Path::new("D:/Repos/nes/Assets/StreamingAssets/Roms/Mario Bros (E).nes");
-    // let rom_path =
-    //     Path::new("D:/Repos/nes/Assets/StreamingAssets/Roms/Donkey Kong (World) (Rev A).nes");
-    // let rom_path =
-    //     Path::new("D:/Repos/nes/Assets/StreamingAssets/Roms/Donkey Kong Classics (U).nes");
-    // let rom_path = Path::new("D:/Repos/nes/Assets/StreamingAssets/Roms/Balloon Fight (USA).nes");
-    // let rom_path = Path::new("D:/Repos/nes/Assets/StreamingAssets/Roms/Super Mario Bros (E).nes");
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() < 2 {
+        panic!("No ROM file specified");
+    }
+
+    let rom_path = Path::new(&args[1]);
+
+    println!("Loading ROM from {}", args[1]);
     let rom = Rc::new(RefCell::new(RomFile::new(rom_path)));
     let mut nes = NesConsole::new(rom);
 
