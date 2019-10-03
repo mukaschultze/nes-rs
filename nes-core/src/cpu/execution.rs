@@ -240,7 +240,7 @@ impl CPU6502 {
             }
             AddressMode::Indirect => {
                 let jump_addr_low = self.load8(join_bytes!(hh, ll));
-                let jump_addr_high = self.load8(join_bytes!(hh, 00));;
+                let jump_addr_high = self.load8(join_bytes!(hh, 00));
                 self.pc = join_bytes!(jump_addr_high, jump_addr_low);
             }
             _ => unreachable!(),

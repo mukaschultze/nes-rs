@@ -124,6 +124,46 @@ fn unofficial_instructions() {
     check_instructions(&Path::new("./test/nestest.full.log"));
 }
 
+#[cfg(test)]
+mod benchmark {
+    extern crate test;
+    use crate::console::NesConsole;
+    use crate::rom::rom_file::RomFile;
+    use std::cell::RefCell;
+    use std::path::Path;
+    use std::rc::Rc;
+    use test::Bencher;
+
+    #[bench]
+    fn nes_speed(b: &mut Bencher) {
+        let rom_path = Path::new("../roms/Donkey Kong (World) (Rev A).nes");
+        let rom = Rc::new(RefCell::new(RomFile::new(rom_path)));
+        let mut nes = NesConsole::new(rom);
+
+        b.iter(|| nes.tick());
+    }
+
+    #[bench]
+    fn cpu_speed(b: &mut Bencher) {
+        let rom_path = Path::new("../roms/Donkey Kong (World) (Rev A).nes");
+        let rom = Rc::new(RefCell::new(RomFile::new(rom_path)));
+        let nes = NesConsole::new(rom);
+        let mut cpu = nes.cpu.borrow_mut();
+
+        b.iter(|| cpu.process_next_opcode());
+    }
+
+    #[bench]
+    fn ppu_speed(b: &mut Bencher) {
+        let rom_path = Path::new("../roms/Donkey Kong (World) (Rev A).nes");
+        let rom = Rc::new(RefCell::new(RomFile::new(rom_path)));
+        let nes = NesConsole::new(rom);
+        let mut ppu = nes.ppu.borrow_mut();
+
+        b.iter(|| ppu.tick());
+    }
+}
+
 pub fn format_instruction(opcode: u8, ll: u8, hh: u8) -> String {
     let inst = Instruction::get_instruction(opcode);
 
