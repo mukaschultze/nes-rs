@@ -20,9 +20,12 @@ use sdl2::rect::Point;
 fn main() {
     // let rom_path = Path::new("../nes-core/test/nestest.nes");
     let rom_path = Path::new("D:/Repos/nes/Assets/StreamingAssets/Roms/Mario Bros (E).nes");
-    // let rom_path = Path::new("D:/Repos/nes/Assets/StreamingAssets/Roms/Donkey Kong (World) (Rev A).nes");
+    // let rom_path =
+    //     Path::new("D:/Repos/nes/Assets/StreamingAssets/Roms/Donkey Kong (World) (Rev A).nes");
     // let rom_path =
     //     Path::new("D:/Repos/nes/Assets/StreamingAssets/Roms/Donkey Kong Classics (U).nes");
+    // let rom_path = Path::new("D:/Repos/nes/Assets/StreamingAssets/Roms/Balloon Fight (USA).nes");
+    // let rom_path = Path::new("D:/Repos/nes/Assets/StreamingAssets/Roms/Super Mario Bros (E).nes");
     let rom = Rc::new(RefCell::new(RomFile::new(rom_path)));
     let mut nes = NesConsole::new(rom);
 
@@ -42,6 +45,7 @@ fn main() {
 
     let window = video_subsystem
         .window("NES", width, height)
+        // .opengl()
         .build()
         .unwrap();
 
@@ -94,7 +98,7 @@ fn main() {
             }
         }
 
-        canvas.set_draw_color(Color::RGB(0, 0, 0));
+        canvas.set_draw_color(Color::RGB(255, 0, 255));
         canvas.clear();
 
         let output = &nes.ppu.borrow().output;
@@ -104,9 +108,9 @@ fn main() {
                 let color_idx = output[(width * y + x) as usize];
 
                 let rgb = palette::get_rgb_color(color_idx);
-                let r = (rgb & 0xFF0000 >> 16) as u8;
-                let g = (rgb & 0x00FF00 >> 8) as u8;
-                let b = (rgb & 0x0000FF) as u8;
+                let r = ((rgb >> 16) & 0xFF) as u8;
+                let g = ((rgb >> 8) & 0xFF) as u8;
+                let b = (rgb & 0xFF) as u8;
 
                 let color = Color::RGB(r, g, b);
                 let point = Point::new(x as i32, y as i32);

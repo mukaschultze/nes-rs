@@ -185,9 +185,9 @@ impl Ppu {
             0x3F00..=0x3FFF => {
                 // Palette RAM indexes
                 if addr % 4 == 0 {
-                    addr &= 0b000_1111
+                    addr &= 0x0F
                 }
-                self.paletteRAM[addr as usize & 0b0001_1111]
+                self.paletteRAM[addr as usize & 0x1F]
             }
             _ => self.vram[addr as usize & 0x3FFF],
         }
@@ -199,9 +199,9 @@ impl Ppu {
             0x3F00..=0x3FFF => {
                 // Palette RAM indexes
                 if addr % 4 == 0 {
-                    addr &= 0b000_1111
+                    addr &= 0x0F;
                 }
-                self.paletteRAM[addr as usize & 0b0001_1111] = value;
+                self.paletteRAM[addr as usize & 0x1F] = value;
             }
             _ => self.vram[addr as usize & 0x3FFF] = value,
         }
