@@ -335,6 +335,20 @@ impl Ppu {
                     let at_data = (self.spriteAttributes[i] & 0x3) + 4;
                     let color = self.read_vram(0x3F00 + (at_data << 2) as u16 + pattern as u16);
 
+                    // https://wiki.nesdev.com/w/index.php?title=PPU_OAM&redirect=no#Sprite_zero_hits
+                    if i == 0 && // Sprite 0
+                        self.sprite0Hit == 0 &&
+                        self.background_enable != 0 && // Background rendering enabled
+                        self.sprite_enable != 0 && // Sprites rendering enabled
+                        // At x=0 to x=7 if the left-side clipping window is enabled (if bit 2 or bit 1 of PPUMASK is 0).
+                        !((x_pos == 0 || x_pos == 7) && (self.background_left_column_enable == 0 || self.sprite_left_column_enable ==0)) &&
+                        x_pos != 255 && // At x=255, for an obscure reason related to the pixel pipeline.
+                        color & 0x03 != 0x00 && // Sprite non-transparent
+                        self.output[(y_pos * 256 + x_pos) as usize] & 0x03 != 0x00
+                    {
+                        self.sprite0Hit = 1;
+                    }
+
                     if self.debugRenderSprites {
                         self.output[(y_pos * 256 + x_pos) as usize] = color;
                     }
