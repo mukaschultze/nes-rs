@@ -11,6 +11,12 @@ use std::cell::RefCell;
 use std::env;
 use std::path::Path;
 use std::rc::Rc;
+use std::sync::mpsc::channel;
+use std::sync::mpsc::Receiver;
+use std::sync::mpsc::Sender;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::thread;
 
 use nes_core::console::NesConsole;
 use nes_core::controller::Controller;
@@ -19,6 +25,20 @@ use nes_core::palette;
 use nes_core::rom::rom_file::RomFile;
 use sdl2::rect::Point;
 
+const WIDTH: u32 = 256;
+const HEIGHT: u32 = 240;
+
+const KEYMAPS: [(Keycode, ControllerDataLine); 8] = [
+    (Keycode::A, ControllerDataLine::A),
+    (Keycode::S, ControllerDataLine::B),
+    (Keycode::Return, ControllerDataLine::SELECT),
+    (Keycode::Space, ControllerDataLine::START),
+    (Keycode::Up, ControllerDataLine::UP),
+    (Keycode::Down, ControllerDataLine::DOWN),
+    (Keycode::Left, ControllerDataLine::LEFT),
+    (Keycode::Right, ControllerDataLine::RIGHT),
+];
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -26,28 +46,44 @@ fn main() {
         panic!("No ROM file specified");
     }
 
-    let rom_path = Path::new(&args[1]);
+    let (input_tx, input_rx) = channel::<ControllerDataLine>();
+    let (vsync_tx, vsync_rx) = channel::<Arc<[u8; (WIDTH * HEIGHT) as usize]>>();
 
-    println!("Loading ROM from {}", args[1]);
-    let rom = Rc::new(RefCell::new(RomFile::new(rom_path)));
-    let mut nes = NesConsole::new(rom);
+    let tx = vsync_tx.clone();
 
-    {
-        let mut bus = nes.bus.borrow_mut();
-        let controller = Controller::new();
-        bus.controller0 = Some(controller);
-    }
+    thread::spawn(move || {
+        println!("Loading ROM from {}", args[1]);
+        let rom_path = Path::new(&args[1]);
+        let rom = Rc::new(RefCell::new(RomFile::new(rom_path)));
+        let mut nes = NesConsole::new(rom);
+
+        {
+            let mut bus = nes.bus.borrow_mut();
+            let controller = Controller::new();
+            bus.controller0 = Some(controller);
+        }
+
+        loop {
+            for _ in 0..1790000 / 50 {
+                nes.tick();
+            }
+
+            let mut bus = nes.bus.borrow_mut();
+            let controller = bus.controller0.as_mut().expect("No controller 0 connected");
+            controller.data = input_rx.recv().unwrap();
+
+            let arc = Arc::from(nes.ppu.borrow().output);
+            tx.send(arc);
+        }
+    });
 
     // http://nercury.github.io/rust/opengl/tutorial/2018/02/08/opengl-in-rust-from-scratch-01-window.html
     let sdl = sdl2::init().unwrap();
     let video_subsystem = sdl.video().unwrap();
     let mut event_pump = sdl.event_pump().unwrap();
 
-    let width = 256;
-    let height = 240;
-
     let window = video_subsystem
-        .window("NES", width, height)
+        .window("NES", WIDTH, HEIGHT)
         .resizable()
         .opengl()
         .build()
@@ -59,42 +95,26 @@ fn main() {
         .build()
         .unwrap();
 
-    canvas.set_logical_size(width, height).unwrap();
+    canvas.set_logical_size(WIDTH, HEIGHT).unwrap();
 
-    let keymaps = [
-        (Keycode::A, ControllerDataLine::A),
-        (Keycode::S, ControllerDataLine::B),
-        (Keycode::Return, ControllerDataLine::SELECT),
-        (Keycode::Space, ControllerDataLine::START),
-        (Keycode::Up, ControllerDataLine::UP),
-        (Keycode::Down, ControllerDataLine::DOWN),
-        (Keycode::Left, ControllerDataLine::LEFT),
-        (Keycode::Right, ControllerDataLine::RIGHT),
-    ];
+    let mut input = ControllerDataLine::empty();
 
     'main: loop {
-        for _ in 0..1790000 / 60 {
-            nes.tick();
-        }
-
         for evt in event_pump.poll_iter() {
-            let mut bus = nes.bus.borrow_mut();
-            let controller = bus.controller0.as_mut().expect("No controller 0 connected");
-
             match evt {
                 Event::Quit { .. } => break 'main,
 
                 Event::KeyDown { keycode, .. } => {
-                    for (src, dst) in &keymaps {
+                    for (src, dst) in &KEYMAPS {
                         if keycode == Some(*src) {
-                            controller.data.insert(*dst);
+                            input.insert(*dst);
                         }
                     }
                 }
                 Event::KeyUp { keycode, .. } => {
-                    for (src, dst) in &keymaps {
+                    for (src, dst) in &KEYMAPS {
                         if keycode == Some(*src) {
-                            controller.data.remove(*dst);
+                            input.remove(*dst);
                         }
                     }
                 }
@@ -104,19 +124,23 @@ fn main() {
             }
         }
 
-        let clear_rgb = palette::get_rgb_color(nes.ppu.borrow().paletteRAM[0]);
-        let r = ((clear_rgb >> 16) & 0xFF) as u8;
-        let g = ((clear_rgb >> 8) & 0xFF) as u8;
-        let b = (clear_rgb & 0xFF) as u8;
+        input_tx.send(input);
 
-        canvas.set_draw_color(Color::RGB(r, g, b));
-        canvas.clear();
+        // let clear_rgb = palette::get_rgb_color(nes.ppu.borrow().paletteRAM[0]);
+        // let r = ((clear_rgb >> 16) & 0xFF) as u8;
+        // let g = ((clear_rgb >> 8) & 0xFF) as u8;
+        // let b = (clear_rgb & 0xFF) as u8;
 
-        let output = &nes.ppu.borrow().output;
+        // canvas.set_draw_color(Color::RGB(r, g, b));
+        // canvas.clear();
 
-        for y in 0..height {
-            for x in 0..width {
-                let color_idx = output[(width * y + x) as usize];
+        // let nes = vsync_rx.recv().unwrap();
+        // let output = &nes.ppu.borrow().output;
+        let output = vsync_rx.recv().unwrap();
+
+        for y in 0..HEIGHT {
+            for x in 0..WIDTH {
+                let color_idx = output[(WIDTH * y + x) as usize];
 
                 let rgb = palette::get_rgb_color(color_idx);
                 let r = ((rgb >> 16) & 0xFF) as u8;
@@ -131,18 +155,6 @@ fn main() {
             }
         }
 
-        // However the canvas has not been updated to the window yet,
-        // everything has been processed to an internal buffer,
-        // but if we want our buffer to be displayed on the window,
-        // we need to call `present`. We need to call this everytime
-        // we want to render a new frame on the window.
         canvas.present();
-        // present does not "clear" the buffer, that means that
-        // you have to clear it yourself before rendering again,
-        // otherwise leftovers of what you've renderer before might
-        // show up on the window !
-        //
-        // A good rule of thumb is to `clear()`, draw every texture
-        // needed, and then `present()`; repeat this every new frame.
     }
 }
