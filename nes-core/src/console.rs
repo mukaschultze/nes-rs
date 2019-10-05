@@ -16,11 +16,7 @@ impl NesConsole {
     pub fn new(rom: Rc<RefCell<RomFile>>) -> NesConsole {
         let bus = Rc::new(RefCell::new(DataBus::new(rom.clone())));
         let cpu = Rc::new(RefCell::new(CPU6502::new(bus.clone())));
-        let ppu = Rc::new(RefCell::new(Ppu::new(
-            cpu.clone(),
-            bus.clone(),
-            rom.clone(),
-        )));
+        let ppu = Rc::new(RefCell::new(Ppu::new(cpu.clone(), rom.clone())));
 
         {
             let cpu = cpu.clone();
