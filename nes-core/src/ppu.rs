@@ -68,24 +68,21 @@ pub struct Ppu {
     pub paletteRAM: [u8; 32],
     vramBuffer: u8,
 
-    // #region Debug
-    pub debugAttributes: bool,
-    pub debugAttributeQuadrants: bool,
-    pub debug32Lines: bool,
-    pub debug8Lines: bool,
-    pub debugRenderBG: bool,
-    pub debugRenderSprites: bool,
-    // #endregion
     dot: u16,
     scanline: u16,
 
     // #region Background
     ntTileLatch: u8,
-    atRegisterLatch: u16,
     loPatternLatch: u8,
     hiPatternLatch: u8,
-    bitmap: u32,
-    palette: u16,
+    atTileLatch: u8,
+
+    lo_at_Latch: u16,
+    hi_at_Latch: u16,
+    lo_bitmap_Latch: u16,
+    hi_bitmap_Latch: u16,
+    // bitmap: u32,
+    // palette: u16,
     // #endregion
 
     // #region Sprites
@@ -145,20 +142,16 @@ impl Ppu {
             vram: [0; 0x4000],
             paletteRAM: [0; 32],
             vramBuffer: 0,
-            debugAttributes: false,
-            debugAttributeQuadrants: false,
-            debug32Lines: false,
-            debug8Lines: false,
-            debugRenderBG: true,
-            debugRenderSprites: true,
             dot: 0,
             scanline: 261, // Equivalent to -1
             ntTileLatch: 0,
-            atRegisterLatch: 0,
+            atTileLatch: 0,
+            lo_at_Latch: 0,
+            hi_at_Latch: 0,
+            lo_bitmap_Latch: 0,
+            hi_bitmap_Latch: 0,
             loPatternLatch: 0,
             hiPatternLatch: 0,
-            bitmap: 0,
-            palette: 0,
             oamMemory: [0; 64 * 4],
             secondaryOamMemory: [0; 8 * 4],
             spritePatternLo: [0; 8],
@@ -286,29 +279,29 @@ impl Ppu {
     fn render_background(&mut self) {
         let x_pos = self.dot - 1;
         let y_pos = self.scanline;
-        let fine_x = self.x;
+        let fine_x = self.x as u16;
 
-        let mut pixel = ((self.bitmap >> (fine_x * 2)) & 0x3) as u8;
-        let quadrant = (((self.v >> 5) & 0x2) << 1) | (0x2 - (self.v & 0x2));
-
-        if self.debugAttributeQuadrants {
-            self.palette = 0xE4; // Debug quadrants
-        }
-
-        if self.debugAttributes {
-            pixel = 1; // Debug attribute tables
-        }
+        // let mut pixel = ((self.bitmap >> (fine_x * 2)) & 0x3) as u8;
+        let pixel_hi = (self.hi_bitmap_Latch >> fine_x) & 0x01;
+        let pixel_lo = (self.lo_bitmap_Latch >> fine_x) & 0x01;
+        let pixel = (pixel_hi << 1) | pixel_lo;
 
         let color = if pixel == 0 {
             self.read_vram(0x3F00) // Background color
         } else {
-            let at_data = (self.palette >> quadrant) & 0x3;
-            self.read_vram(0x3F00 + (at_data << 2) + pixel as u16)
+            let at_data_lo = (self.lo_at_Latch >> fine_x) & 0x01;
+            let at_data_hi = (self.hi_at_Latch >> fine_x) & 0x01;
+            let at_data = (at_data_hi << 3) | (at_data_lo << 2);
+
+            self.read_vram(0x3F00 | at_data | pixel)
         };
 
-        if self.debugRenderBG {
-            self.output[(y_pos * 256 + x_pos) as usize] = color;
-        }
+        self.output[(y_pos * 256 + x_pos) as usize] = color;
+
+        self.lo_at_Latch >>= 1;
+        self.hi_at_Latch >>= 1;
+        self.lo_bitmap_Latch >>= 1;
+        self.hi_bitmap_Latch >>= 1;
     }
 
     fn render_sprites(&mut self) {
@@ -348,9 +341,7 @@ impl Ppu {
                         self.sprite0Hit = 1;
                     }
 
-                    if self.debugRenderSprites {
-                        self.output[(y_pos * 256 + x_pos) as usize] = color;
-                    }
+                    self.output[(y_pos * 256 + x_pos) as usize] = color;
                 }
             }
         }
@@ -396,8 +387,6 @@ impl Ppu {
         let pre_render_line = self.scanline == 261;
         let fetch_scanline = visible_scanline || pre_render_line;
         let fetch_cycle = fetch_scanline && (render_cycle || self.dot >= 321);
-        let shift_cycle =
-            (self.dot >= 2 && self.dot <= 257) || (self.dot >= 322 && self.dot <= 337);
         let fine_y = (self.v >> 12) & 0x7;
 
         if !rendering_enabled && visible_scanline && render_cycle {
@@ -409,74 +398,51 @@ impl Ppu {
             if render_cycle && visible_scanline {
                 self.render_background();
                 self.render_sprites();
-
-                // DEBUG LINES
-                if self.debug8Lines && (y_pos % 8 == 0 || x_pos % 8 == 0) {
-                    self.output[(y_pos * 256 + x_pos) as usize] = 0x0C;
-                }
-                if self.debug32Lines && (y_pos % 32 == 0 || x_pos % 32 == 0) {
-                    self.output[(y_pos * 256 + x_pos) as usize] = 0x21;
-                }
-            }
-
-            if shift_cycle {
-                self.bitmap >>= 2;
             }
 
             if fetch_cycle {
                 match phase {
-                    1 =>
-                    // Fetch a nametable entry from $2000-$2FBF.
-                    {
-                        self.ntTileLatch = self.read_vram(0x2000 | (self.v & 0x0FFF))
+                    1 => {
+                        let bitmap = ((self.atTileLatch
+                            >> (((self.v >> 4) & 4) | (unchecked_sub!(self.v, 1) & 2)))
+                            & 0x03) as u16;
+
+                        // https://forums.nesdev.com/viewtopic.php?f=3&t=10348
+                        self.lo_at_Latch |= (bitmap & 1) * 0xFF00;
+                        self.hi_at_Latch |= (bitmap >> 1) * 0xFF00;
+                        self.lo_bitmap_Latch |= (reverse_bits(self.loPatternLatch) as u16) << 8;
+                        self.hi_bitmap_Latch |= (reverse_bits(self.hiPatternLatch) as u16) << 8;
+
+                        // Fetch a nametable entry from $2000-$2FBF.
+                        self.ntTileLatch = self.read_vram(0x2000 | (self.v & 0x0FFF));
                     }
-                    3 =>
-                    // Fetch the corresponding attribute table entry from $23C0-$2FFF and increment the current VRAM address within the same row.
-                    // https://wiki.nesdev.com/w/index.php/PPU_scrolling#Tile_and_attribute_fetching
-                    {
-                        self.atRegisterLatch = self.read_vram(
+
+                    3 => {
+                        // Fetch the corresponding attribute table entry from $23C0-$2FFF and increment the current VRAM address within the same row.
+                        // https://wiki.nesdev.com/w/index.php/PPU_scrolling#Tile_and_attribute_fetching
+                        self.atTileLatch = self.read_vram(
                             0x23C0
                                 | (self.v & 0x0C00)
                                 | ((self.v >> 4) & 0x38)
                                 | ((self.v >> 2) & 0x07),
-                        ) as u16;
+                        );
                     }
 
-                    5 =>
-                    // Fetch the low-order byte of an 8x1 pixel sliver of pattern table from $0000-$0FF7 or $1000-$1FF7.
-                    {
-                        self.loPatternLatch = self.read_vram(
-                            self.background_tile_select | (self.ntTileLatch as u16 * 16 + fine_y),
-                        )
+                    5 => {
+                        // Fetch the low-order byte of an 8x1 pixel sliver of pattern table from $0000-$0FF7 or $1000-$1FF7.
+                        let addr =
+                            self.background_tile_select | ((self.ntTileLatch as u16) * 16 + fine_y);
+                        self.loPatternLatch = self.read_vram(addr);
                     }
 
-                    7 =>
-                    // Fetch the high-order byte of this sliver from an address 8 bytes higher.
-                    {
-                        self.hiPatternLatch = self.read_vram(
-                            self.background_tile_select
-                                | (self.ntTileLatch as u16 * 16 + fine_y + 8),
-                        )
+                    7 => {
+                        // Fetch the high-order byte of this sliver from an address 8 bytes higher.
+                        let addr = self.background_tile_select
+                            | ((self.ntTileLatch as u16) * 16 + fine_y + 8);
+                        self.hiPatternLatch = self.read_vram(addr);
                     }
 
                     0 => {
-                        // Turn the attribute data and the pattern table data into palette indices, and combine them with data from sprite data using priority.
-                        let mut data = 0u16;
-
-                        for i in 0..8 {
-                            let pattern_lo = (self.loPatternLatch >> i) & 1;
-                            let pattern_hi = (self.hiPatternLatch >> i) & 1;
-                            let pattern = (pattern_hi << 1) | pattern_lo;
-
-                            data <<= 2;
-                            data |= pattern as u16;
-                        }
-
-                        self.palette >>= 8;
-                        self.palette |= self.atRegisterLatch << 8;
-                        self.bitmap &= 0xFFFF;
-                        self.bitmap |= (data as u32) << 16;
-
                         self.inc_horizontal();
                         if self.dot == 256 {
                             self.inc_vertical();
