@@ -47,7 +47,7 @@ impl CPU6502 {
     /// Pull a byte the stack.
     #[allow(clippy::cast_lossless)]
     pub fn pull8(&mut self) -> u8 {
-        self.sp += 1;
+        self.sp = unchecked_add!(self.sp, 1);
         self.load8(0x100 + self.sp as u16)
     }
 
@@ -55,7 +55,7 @@ impl CPU6502 {
     #[allow(clippy::cast_lossless)]
     pub fn push8(&mut self, bb: u8) {
         self.store8(0x100 + self.sp as u16, bb);
-        self.sp -= 1;
+        self.sp = unchecked_sub!(self.sp, 1);
     }
 
     /// Pull a short off the stack.

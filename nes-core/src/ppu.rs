@@ -522,8 +522,7 @@ impl Ppu {
             0x2004 => {
                 // OAMDATA $2004 dddd dddd
                 self.oamMemory[self.oamAddress as usize] = value;
-                self.oamAddress += 1;
-                self.oamAddress &= self.oamMemory.len() as u8;
+                self.oamAddress = unchecked_add!(self.oamAddress, 1);
             }
 
             0x2005 => {
