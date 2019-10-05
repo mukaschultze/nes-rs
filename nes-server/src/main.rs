@@ -12,10 +12,7 @@ use std::env;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::mpsc::channel;
-use std::sync::mpsc::Receiver;
-use std::sync::mpsc::Sender;
 use std::sync::Arc;
-use std::sync::Mutex;
 use std::thread;
 
 use nes_core::console::NesConsole;
@@ -73,7 +70,7 @@ fn main() {
             controller.data = input_rx.recv().unwrap();
 
             let arc = Arc::from(nes.ppu.borrow().output);
-            tx.send(arc);
+            tx.send(arc).unwrap();
         }
     });
 
@@ -124,7 +121,7 @@ fn main() {
             }
         }
 
-        input_tx.send(input);
+        input_tx.send(input).unwrap();
 
         // let clear_rgb = palette::get_rgb_color(nes.ppu.borrow().paletteRAM[0]);
         // let r = ((clear_rgb >> 16) & 0xFF) as u8;
