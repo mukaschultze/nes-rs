@@ -1,0 +1,9 @@
+[workspace]
+
+members = [
+    "nes-core",
+    "nes-server",
+]
+
+[profile.dev]
+opt-level = 3
