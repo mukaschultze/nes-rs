@@ -71,7 +71,7 @@ impl DataBus {
                     let v = self.read(((value as u16) << 8) + i as u16);
                     let mut ppu = self.ppu.as_ref().unwrap().borrow_mut();
                     let oam_addr = ppu.oamAddress;
-                    ppu.oamMemory[(i + oam_addr) as usize % 256] = v;
+                    ppu.oamMemory[unchecked_add!(i, oam_addr) as usize % 256] = v;
                 }
             }
             0x4016 => match self.controller0.as_mut() {
