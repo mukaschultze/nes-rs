@@ -3,51 +3,95 @@ use crate::rom::rom_file::RomFile;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+bitflags! {
+    /// Various flags controlling PPU operation
+    /// https://wiki.nesdev.com/w/index.php/PPU_registers#Controller_.28.242000.29_.3E_write
+    #[derive(Default)]
+    struct PPUCTRL: u8 {
+        /// Base nametable address (0 = 0x2000; 1 = 0x2400; 2 = 0x2800; 3 = 0x2C00)
+        const NAME_TABLE = 0b0000_0011;
+        /// VRAM address increment per CPU read/write of PPUDATA (0: add 1, going across; 1: add 32, going down)
+        const VRAM_INCREMENT = 0b0000_0100;
+        /// Sprite pattern table address for 8x8 sprites (0: 0x0000; 1: 0x1000; ignored in 8x16 mode)
+        const SPRITE_TILE_SELECT =0b0000_1000;
+        /// Background pattern table address (0: 0x0000; 1: 0x1000)
+        const BG_TILE_SELECT =0b0001_0000;
+        /// Sprite size (0: 8x8 pixels; 1: 8x16 pixels)
+        const SPRITE_HEIGHT = 0b0010_0000;
+        /// PPU master/slave select (0: read backdrop from EXT pins; 1: output color on EXT pins)
+        const PPU_MASTER_SLAVE = 0b0100_0000;
+        /// Generate an NMI at the start of the vertical blanking interval (0: off; 1: on)
+        const NMI_ENABLE = 0b1000_0000;
+    }
+}
+
+impl PPUCTRL {
+    fn name_table_select(self) -> u16 {
+        0x2000 | (((self & Self::NAME_TABLE).bits() as u16) << 10)
+    }
+
+    fn vram_increment(self) -> u16 {
+        if self.contains(Self::VRAM_INCREMENT) {
+            32
+        } else {
+            1
+        }
+    }
+
+    fn sprite_tile_select(self) -> u16 {
+        ((self & Self::SPRITE_TILE_SELECT).bits() as u16) << 9
+    }
+
+    fn bg_tile_select(self) -> u16 {
+        ((self & Self::BG_TILE_SELECT).bits() as u16) << 8
+    }
+
+    fn sprite_height(self) -> u8 {
+        8 << (self & Self::SPRITE_HEIGHT).bits()
+    }
+}
+
+bitflags! {
+    /// This register controls the rendering of sprites and backgrounds, as well as colour effects.
+    /// https://wiki.nesdev.com/w/index.php/PPU_registers#PPUMASK
+    #[derive(Default)]
+    struct PPUMASK: u8 {
+        /// Greyscale (0: normal color, 1: produce a greyscale display)
+        const GREYSCALE = 0b0000_0001;
+        /// 1: Show background in leftmost 8 pixels of screen, 0: Hide
+        const BACKGROUND_LEFTMOST_COLUMN = 0b0000_0010;
+        /// 1: Show sprites in leftmost 8 pixels of screen, 0: Hide
+        const SPRITE_LEFTMOST_COLUMN = 0b0000_0100;
+        /// 1: Show background
+        const BACKGROUND_ENABLE = 0b0000_1000;
+        /// 1: Show sprites
+        const SPRITE_ENABLE = 0b0001_0000;
+        /// Emphasize red, green, blue
+        const COLOR_EMPHASIS_BGR = 0b1110_0000;
+    }
+}
+
+bitflags! {
+    /// This register reflects the state of various functions inside the PPU.
+    /// It is often used for determining timing. To determine when the PPU has reached
+    /// a given pixel of the screen, put an opaque (non-transparent) pixel of sprite 0 there.
+    /// https://wiki.nesdev.com/w/index.php/PPU_registers#PPUSTATUS
+    #[derive(Default)]
+    struct PPUSTATUS: u8 {
+        /// Sprite overflow.
+        const SPRITE_OVERFLOW = 0b0010_0000;
+        /// Sprite 0 Hit. Set when a nonzero pixel of sprite 0 overlaps a nonzero background pixel.
+        const SPRITE_0_HIT = 0b0100_0000;
+        /// Vertical blank has started.
+        const V_BLANK = 0b1000_0000;
+    }
+}
+
 /// https://wiki.nesdev.com/w/index.php/PPU
 pub struct Ppu {
-    // TODO: Use bitflags
-    // #region PPUCTRL $2000
-    /// Generate an NMI at the start of the vertical blanking interval (0: off; 1: on)
-    nmi_enable: u8,
-    /// PPU master/slave select (0: read backdrop from EXT pins; 1: output color on EXT pins)
-    ppu_master_slave: u8,
-    /// Sprite size (0: 8x8 pixels; 1: 8x16 pixels)
-    sprite_height: u8,
-    /// Background pattern table address (0: 0x0000; 1: 0x1000)
-    background_tile_select: u16,
-    /// Sprite pattern table address for 8x8 sprites (0: 0x0000; 1: 0x1000; ignored in 8x16 mode)
-    sprite_tile_select: u16,
-    /// VRAM address increment per CPU read/write of PPUDATA (0: add 1, going across; 1: add 32, going down)
-    increment_mode: u16,
-    /// Base nametable address (0 = 0x2000; 1 = 0x2400; 2 = 0x2800; 3 = 0x2C00)
-    nametable_select: u16,
-    // #endregion
-
-    // TODO: Use bitflags
-    // #region PPUMASK $2001
-    /// Emphasize red, green, blue
-    color_emphasis_bgr: u8,
-    /// 1: Show sprites
-    sprite_enable: u8,
-    /// 1: Show background
-    background_enable: u8,
-    /// 1: Show sprites in leftmost 8 pixels of screen, 0: Hide
-    sprite_left_column_enable: u8,
-    /// 1: Show background in leftmost 8 pixels of screen, 0: Hide
-    background_left_column_enable: u8,
-    /// Greyscale (0: normal color, 1: produce a greyscale display)
-    greyscale: u8,
-    // #endregion
-
-    // TODO: Use bitflags
-    // #region PPUSTATUS $2002
-    /// Vertical blank has started.
-    vblank: u8,
-    /// Sprite 0 Hit. Set when a nonzero pixel of sprite 0 overlaps a nonzero background pixel.
-    sprite_0_hit: u8,
-    /// Sprite overflow.
-    sprite_overflow: u8,
-    // #endregion
+    ppuctrl: PPUCTRL,
+    ppumask: PPUMASK,
+    ppustatus: PPUSTATUS,
     /// OAM address port
     pub oam_address: u8,
 
@@ -105,22 +149,9 @@ pub struct Ppu {
 impl Ppu {
     pub fn new(cpu: Rc<RefCell<CPU6502>>, rom: Rc<RefCell<RomFile>>) -> Self {
         let mut ppu = Ppu {
-            nmi_enable: 0,
-            ppu_master_slave: 0,
-            sprite_height: 0,
-            background_tile_select: 0,
-            sprite_tile_select: 0,
-            increment_mode: 0,
-            nametable_select: 0,
-            color_emphasis_bgr: 0,
-            sprite_enable: 0,
-            background_enable: 0,
-            sprite_left_column_enable: 0,
-            background_left_column_enable: 0,
-            greyscale: 0,
-            vblank: 0,
-            sprite_0_hit: 0,
-            sprite_overflow: 0,
+            ppuctrl: Default::default(),
+            ppumask: Default::default(),
+            ppustatus: Default::default(),
             oam_address: 0,
             v: 0,
             t: 0,
@@ -206,8 +237,11 @@ impl Ppu {
             let sprite_y_top = self.oam_memory[i];
             let mut offset = y_pos as i16 - sprite_y_top as i16;
 
+            let sprite_height = self.ppuctrl.sprite_height() as i16;
+            let sprite_tile_select = self.ppuctrl.sprite_tile_select();
+
             // If this sprite is on the next scanline, copy it to the _sprites array for rendering
-            if offset < self.sprite_height as i16 && offset >= 0 {
+            if offset < sprite_height && offset >= 0 {
                 if sprite_count == 8 {
                     // sprite_overflow = 1;
                 } else {
@@ -219,10 +253,10 @@ impl Ppu {
                         offset = 7 - offset;
                     }
 
-                    self.sprite_pattern_lo[sprite_count] = self
-                        .read_vram((sprite_idx * 16 + 0 + offset as u16) | self.sprite_tile_select);
-                    self.sprite_pattern_hi[sprite_count] = self
-                        .read_vram((sprite_idx * 16 + 8 + offset as u16) | self.sprite_tile_select);
+                    self.sprite_pattern_lo[sprite_count] =
+                        self.read_vram((sprite_idx * 16 + 0 + offset as u16) | sprite_tile_select);
+                    self.sprite_pattern_hi[sprite_count] =
+                        self.read_vram((sprite_idx * 16 + 8 + offset as u16) | sprite_tile_select);
                     self.sprite_x_pos[sprite_count] = self.oam_memory[i + 3] as i16;
                     sprite_count += 1;
                 }
@@ -315,16 +349,16 @@ impl Ppu {
 
                     // https://wiki.nesdev.com/w/index.php?title=PPU_OAM&redirect=no#Sprite_zero_hits
                     if i == 0 && // Sprite 0
-                        self.sprite_0_hit == 0 &&
-                        self.background_enable != 0 && // Background rendering enabled
-                        self.sprite_enable != 0 && // Sprites rendering enabled
+                        !self.ppustatus.contains(PPUSTATUS::SPRITE_0_HIT) &&
+                        self.ppumask.contains(PPUMASK::BACKGROUND_ENABLE) && // Background rendering enabled
+                        self.ppumask.contains(PPUMASK::SPRITE_ENABLE) && // Sprites rendering enabled
                         // At x=0 to x=7 if the left-side clipping window is enabled (if bit 2 or bit 1 of PPUMASK is 0).
-                        !((x_pos == 0 || x_pos == 7) && (self.background_left_column_enable == 0 || self.sprite_left_column_enable ==0)) &&
+                        !((x_pos == 0 || x_pos == 7) && (!self.ppumask.contains(PPUMASK::BACKGROUND_LEFTMOST_COLUMN) || !self.ppumask.contains(PPUMASK::SPRITE_LEFTMOST_COLUMN))) &&
                         x_pos != 255 && // At x=255, for an obscure reason related to the pixel pipeline.
                         color & 0x03 != 0x00 && // Sprite non-transparent
                         self.output[(y_pos * 256 + x_pos) as usize] & 0x03 != 0x00
                     {
-                        self.sprite_0_hit = 1;
+                        self.ppustatus.set(PPUSTATUS::SPRITE_0_HIT, true);
                     }
 
                     self.output[(y_pos * 256 + x_pos) as usize] = color;
@@ -337,16 +371,16 @@ impl Ppu {
         let pre_render_line = self.scanline == 261;
 
         if self.dot == 1 && self.scanline == 241 {
-            self.vblank = 1;
-            if self.nmi_enable != 0 {
+            self.ppustatus.set(PPUSTATUS::V_BLANK, true);
+            if self.ppuctrl.contains(PPUCTRL::NMI_ENABLE) {
                 self.cpu.borrow_mut().request_nmi();
             }
         }
 
         if pre_render_line && self.dot == 1 {
-            self.vblank = 0;
-            self.sprite_0_hit = 0;
-            self.sprite_overflow = 0;
+            self.ppustatus.set(PPUSTATUS::V_BLANK, false);
+            self.ppustatus.set(PPUSTATUS::SPRITE_0_HIT, false);
+            self.ppustatus.set(PPUSTATUS::SPRITE_OVERFLOW, false);
         }
 
         self.dot += 1;
@@ -366,7 +400,8 @@ impl Ppu {
         let x_pos = self.dot as i32 - 1;
         let y_pos = self.scanline as i32;
 
-        let rendering_enabled = (self.background_enable != 0) || (self.sprite_enable != 0);
+        let rendering_enabled = self.ppumask.contains(PPUMASK::BACKGROUND_ENABLE)
+            || self.ppumask.contains(PPUMASK::SPRITE_ENABLE);
         let phase = self.dot % 8;
         let render_cycle = self.dot >= 1 && self.dot <= 256;
         let visible_scanline = self.scanline <= 239;
@@ -416,15 +451,15 @@ impl Ppu {
 
                     5 => {
                         // Fetch the low-order byte of an 8x1 pixel sliver of pattern table from $0000-$0FF7 or $1000-$1FF7.
-                        let addr =
-                            self.background_tile_select | ((self.nt_latch as u16) * 16 + fine_y);
+                        let bg_tile_select = self.ppuctrl.bg_tile_select();
+                        let addr = bg_tile_select | ((self.nt_latch as u16) * 16 + fine_y);
                         self.pattern_latch_lo = self.read_vram(addr);
                     }
 
                     7 => {
                         // Fetch the high-order byte of this sliver from an address 8 bytes higher.
-                        let addr = self.background_tile_select
-                            | ((self.nt_latch as u16) * 16 + fine_y + 8);
+                        let bg_tile_select = self.ppuctrl.bg_tile_select();
+                        let addr = bg_tile_select | ((self.nt_latch as u16) * 16 + fine_y + 8);
                         self.pattern_latch_hi = self.read_vram(addr);
                     }
 
@@ -475,35 +510,13 @@ impl Ppu {
     pub fn write_register_cpu_address(&mut self, address: u16, value: u8) {
         match address {
             0x2000 => {
-                // PPUCTRL $2000 VPHB SINN
-                self.nmi_enable = (value >> 7) & 1;
-                self.ppu_master_slave = (value >> 6) & 1;
-                self.sprite_height = ((value >> 5) & 1) * 8 + 8; // 8x16 or 8x8
-                self.background_tile_select = ((value as u16 >> 4) & 1) * 0x1000;
-                self.sprite_tile_select = ((value as u16 >> 3) & 1) * 0x1000;
-                self.increment_mode = ((value as u16 >> 2) & 1) * 31 + 1;
-                self.nametable_select = (value as u16 & 0x03) * 0x400 + 0x2000; // !MIGHT REMOVE
+                self.ppuctrl = PPUCTRL::from_bits_truncate(value);
                 self.t = (self.t & 0xF3FF) | ((value as u16 & 0x3) << 10);
             }
 
-            0x2001 => {
-                // PPUMASK $2001 BGRs bMmG
-                self.color_emphasis_bgr = (value >> 5) & 3;
-                self.sprite_enable = (value >> 4) & 1;
-                self.background_enable = (value >> 3) & 1;
-                self.sprite_left_column_enable = (value >> 2) & 1;
-                self.background_left_column_enable = (value >> 1) & 1;
-                self.greyscale = value & 1;
-            }
-
-            0x2002 => {
-                // Debug.Log("PPUSTATUS $2002 is read only!");
-            }
-
-            0x2003 => {
-                // OAMADDR $2003 aaaa aaaa
-                self.oam_address = value;
-            }
+            0x2001 => self.ppumask = PPUMASK::from_bits_truncate(value),
+            0x2002 => {} // PPUSTATUS $2002 is read only!
+            0x2003 => self.oam_address = value,
 
             0x2004 => {
                 // OAMDATA $2004 dddd dddd
@@ -537,7 +550,7 @@ impl Ppu {
             0x2007 => {
                 // PPUDATA $2007 dddd dddd
                 self.write_vram(self.v, value);
-                self.v += self.increment_mode as u16;
+                self.v += self.ppuctrl.vram_increment();
                 self.v &= 0x3FFF;
             }
 
@@ -550,9 +563,10 @@ impl Ppu {
             0x2000 => 0, // PPUCTRL $2000 is write only!
             0x2001 => 0, // PPUMASK $2001 is write only!
             0x2002 => {
-                // PPUSTATUS $2002 VSO- ----
                 self.w = false;
-                (self.vblank << 7) | (self.sprite_0_hit << 6) | (self.sprite_overflow << 5)
+                let ret = self.ppustatus.bits();
+                self.ppustatus.set(PPUSTATUS::V_BLANK, false);
+                ret
             }
             0x2003 => 0, // OAMADDR $2003 is write only!
             0x2004 => self.oam_memory[self.oam_address as usize], // OAMDATA $2004 dddd dddd
@@ -562,7 +576,7 @@ impl Ppu {
                 // PPUDATA $2007 dddd dddd
                 let ret = self.vram_buffer;
                 self.vram_buffer = self.read_vram(self.v);
-                self.v += self.increment_mode;
+                self.v += self.ppuctrl.vram_increment();
                 self.v &= 0x3FFF;
                 if self.v >= 0x3F00 {
                     self.vram_buffer
