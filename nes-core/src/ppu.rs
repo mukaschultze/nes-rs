@@ -26,10 +26,6 @@ bitflags! {
 }
 
 impl PPUCTRL {
-    fn name_table_select(self) -> u16 {
-        0x2000 | (((self & Self::NAME_TABLE).bits() as u16) << 10)
-    }
-
     fn vram_increment(self) -> u16 {
         if self.contains(Self::VRAM_INCREMENT) {
             32
@@ -140,7 +136,6 @@ pub struct Ppu {
     /// 8 counters - These contain the X positions for up to 8 sprites.
     sprite_x_pos: [i16; 8],
     // #endregion
-    n: u8,
     sprite_count: u8,
 
     cpu: Rc<RefCell<CPU6502>>,
@@ -177,14 +172,13 @@ impl Ppu {
             sprite_pattern_hi: [0; 8],
             sprite_at: [0; 8],
             sprite_x_pos: [0; 8],
-            n: 0,
             sprite_count: 0,
             cpu,
         };
 
         let r = rom.as_ref().borrow();
 
-        ppu.vram[0..0x2000].copy_from_slice(&r.chr_data[0..0x2000]);
+        // ppu.vram[0..0x2000].copy_from_slice(&r.chr_data[0..0x2000]);
 
         ppu
     }
@@ -248,16 +242,25 @@ impl Ppu {
                     let sprite_idx = self.oam_memory[i + 1] as u16;
                     self.sprite_at[sprite_count] = self.oam_memory[i + 2];
 
+                    // Flip vertically
                     if (self.sprite_at[sprite_count] & 0x80) != 0 {
-                        // Flip vertically
                         offset = 7 - offset;
                     }
 
-                    self.sprite_pattern_lo[sprite_count] =
-                        self.read_vram((sprite_idx * 16 + 0 + offset as u16) | sprite_tile_select);
-                    self.sprite_pattern_hi[sprite_count] =
-                        self.read_vram((sprite_idx * 16 + 8 + offset as u16) | sprite_tile_select);
+                    let addr = (sprite_idx * 16 + offset as u16) | sprite_tile_select;
+                    let mut pattern_lo = self.read_vram(addr);
+                    let mut pattern_hi = self.read_vram(addr + 8);
                     self.sprite_x_pos[sprite_count] = self.oam_memory[i + 3] as i16;
+
+                    // Flip horizontally
+                    if (self.sprite_at[sprite_count] & 0x40) != 0 {
+                        pattern_lo = reverse_bits(pattern_lo);
+                        pattern_hi = reverse_bits(pattern_hi);
+                    }
+
+                    self.sprite_pattern_lo[sprite_count] = pattern_lo;
+                    self.sprite_pattern_hi[sprite_count] = pattern_hi;
+
                     sprite_count += 1;
                 }
             }
@@ -332,15 +335,9 @@ impl Ppu {
             self.sprite_x_pos[i] = unchecked_sub!(self.sprite_x_pos[i], 1);
             if self.sprite_x_pos[i] <= 0 && self.sprite_x_pos[i] > -8 {
                 // Sprite becomes active
-                let mut bit_index = 7 + self.sprite_x_pos[i];
-
-                if (self.sprite_at[i] & 0x40) != 0 {
-                    // Flip horizontally
-                    bit_index = 7 - bit_index;
-                }
-
-                let pattern_lo = (self.sprite_pattern_lo[i] >> bit_index) & 1;
-                let pattern_hi = (self.sprite_pattern_hi[i] >> bit_index) & 1;
+                let bit_idx = 7 + self.sprite_x_pos[i];
+                let pattern_lo = (self.sprite_pattern_lo[i] >> bit_idx) & 1;
+                let pattern_hi = (self.sprite_pattern_hi[i] >> bit_idx) & 1;
                 let pattern = (pattern_hi << 1) | pattern_lo;
 
                 if pattern != 0 {
@@ -356,12 +353,22 @@ impl Ppu {
                         !((x_pos == 0 || x_pos == 7) && (!self.ppumask.contains(PPUMASK::BACKGROUND_LEFTMOST_COLUMN) || !self.ppumask.contains(PPUMASK::SPRITE_LEFTMOST_COLUMN))) &&
                         x_pos != 255 && // At x=255, for an obscure reason related to the pixel pipeline.
                         color & 0x03 != 0x00 && // Sprite non-transparent
+
+                        // TODO: Use mux to check if sprite is transparent
+                        // !This check is incorrect, & 0x03 should be checked against the bitmap
                         self.output[(y_pos * 256 + x_pos) as usize] & 0x03 != 0x00
                     {
                         self.ppustatus.set(PPUSTATUS::SPRITE_0_HIT, true);
                     }
 
-                    self.output[(y_pos * 256 + x_pos) as usize] = color;
+                    let priority = self.sprite_at[i] & 0x20; // 0: in front of background; 1: behind background
+
+                    // TODO: Use mux to check if sprite is transparent
+                    if priority == 0
+                        || self.output[(y_pos * 256 + x_pos) as usize] == self.palette_vram[0]
+                    {
+                        self.output[(y_pos * 256 + x_pos) as usize] = color;
+                    }
                 }
             }
         }
@@ -482,7 +489,6 @@ impl Ppu {
                         for i in 0..self.secondary_oam_memory.len() {
                             self.secondary_oam_memory[i] = 0xFF;
                         }
-                        self.n = 0;
                         self.sprite_count = 0;
                     }
                     65..=256 => self.sprite_evaluation(),
