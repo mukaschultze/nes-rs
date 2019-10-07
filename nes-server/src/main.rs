@@ -53,6 +53,7 @@ fn main() {
         let rom_path = Path::new(&args[1]);
         let rom = Rc::new(RefCell::new(RomFile::new(rom_path)));
         let mut nes = NesConsole::new(rom);
+        static mut RENDER_REQUEST: bool = false;
 
         {
             let mut bus = nes.bus.borrow_mut();
@@ -60,17 +61,29 @@ fn main() {
             bus.controller0 = Some(controller);
         }
 
+        {
+            let mut ppu = nes.ppu.borrow_mut();
+
+            ppu.v_blank_callback = Box::new(|| unsafe {
+                RENDER_REQUEST = true;
+            });
+        }
+
         loop {
-            for _ in 0..1790000 / 50 {
-                nes.tick();
+            nes.tick();
+
+            unsafe {
+                if RENDER_REQUEST {
+                    let mut bus = nes.bus.borrow_mut();
+                    let controller = bus.controller0.as_mut().expect("No controller 0 connected");
+                    controller.data = input_rx.recv().unwrap();
+
+                    let arc = Arc::from(nes.ppu.borrow().output);
+                    tx.send(arc).unwrap();
+
+                    RENDER_REQUEST = false;
+                }
             }
-
-            let mut bus = nes.bus.borrow_mut();
-            let controller = bus.controller0.as_mut().expect("No controller 0 connected");
-            controller.data = input_rx.recv().unwrap();
-
-            let arc = Arc::from(nes.ppu.borrow().output);
-            tx.send(arc).unwrap();
         }
     });
 

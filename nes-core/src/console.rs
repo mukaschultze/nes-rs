@@ -36,9 +36,12 @@ impl NesConsole {
     }
 
     pub fn tick(&mut self) {
+        let mut l = self.cpu.borrow().ticks;
         self.cpu.borrow_mut().process_next_opcode();
-        self.ppu.borrow_mut().tick();
-        self.ppu.borrow_mut().tick();
-        self.ppu.borrow_mut().tick();
+        l = self.cpu.borrow().ticks - l;
+
+        for _ in 0..l * 3 {
+            self.ppu.borrow_mut().tick();
+        }
     }
 }

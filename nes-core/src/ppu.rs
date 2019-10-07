@@ -139,6 +139,8 @@ pub struct Ppu {
     sprite_count: u8,
 
     cpu: Rc<RefCell<CPU6502>>,
+
+    pub v_blank_callback: Box<dyn FnMut()>,
 }
 
 impl Ppu {
@@ -174,11 +176,12 @@ impl Ppu {
             sprite_x_pos: [0; 8],
             sprite_count: 0,
             cpu,
+            v_blank_callback: Box::new(|| {}),
         };
 
         let r = rom.as_ref().borrow();
 
-        // ppu.vram[0..0x2000].copy_from_slice(&r.chr_data[0..0x2000]);
+        ppu.vram[0..0x2000].copy_from_slice(&r.chr_data[0..0x2000]);
 
         ppu
     }
@@ -382,6 +385,8 @@ impl Ppu {
             if self.ppuctrl.contains(PPUCTRL::NMI_ENABLE) {
                 self.cpu.borrow_mut().request_nmi();
             }
+
+            self.v_blank_callback.as_mut()();
         }
 
         if pre_render_line && self.dot == 1 {

@@ -5,7 +5,8 @@ use std::u8;
 #[allow(clippy::cast_lossless)]
 impl CPU6502 {
     fn illegal_op_code(&mut self, opcode: u8) {
-        println!("Illegal opcode {:#2X} @ {:#4X}", opcode, self.pc);
+        // println!("Illegal opcode {:#2X} @ {:#4X}", opcode, self.pc);
+        panic!("Illegal opcode {:#2X} @ {:#4X}", opcode, self.pc);
     }
 
     pub fn process_opcode(&mut self, opcode: u8, ll: u8, hh: u8) {

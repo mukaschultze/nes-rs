@@ -28,7 +28,7 @@ impl RomFile {
 
         let header = RomHeader::new(header_buf);
 
-        println!("Loaded ROM header: {:?}", header);
+        // println!("Loaded ROM header: {:?}", header);
 
         let pgr_data = &mut vec![0u8; 16384 * header.prg_rom_size as usize];
         let chr_data = &mut vec![0u8; 8192 * header.chr_rom_size as usize];
