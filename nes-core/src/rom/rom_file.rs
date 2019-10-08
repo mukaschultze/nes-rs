@@ -1,7 +1,7 @@
 use crate::rom::rom_header::RomHeader;
-use std::error::Error;
 use std::fs::File;
-use std::io::prelude::*;
+use std::io::BufReader;
+use std::io::Read;
 use std::path::Path;
 
 pub struct RomFile {
@@ -11,20 +11,10 @@ pub struct RomFile {
 }
 
 impl RomFile {
-    pub fn new(path: &Path) -> Self {
-        let display = path.display();
-
-        let mut file = match File::open(&path) {
-            Ok(file) => file,
-            Err(why) => panic!("Couldn't open {}: {}", display, why.description()),
-        };
-
+    pub fn new(buffer: &mut dyn Read) -> Self {
         let header_buf = &mut [0u8; 16];
 
-        match file.read_exact(header_buf) {
-            Ok(file) => file,
-            Err(why) => panic!("Error reading {}: {}", display, why.description()),
-        };
+        buffer.read_exact(header_buf).unwrap();
 
         let header = RomHeader::new(header_buf);
 
@@ -33,24 +23,24 @@ impl RomFile {
         let pgr_data = &mut vec![0u8; 16384 * header.prg_rom_size as usize];
         let chr_data = &mut vec![0u8; 8192 * header.chr_rom_size as usize];
 
-        if !header.is_valid() {
-            panic!("Invalid NES rom file");
-        }
+        assert!(header.is_valid(), "Invalid NES rom");
 
-        match file.read_exact(pgr_data) {
-            Ok(file) => file,
-            Err(why) => panic!("Error reading {}: {}", display, why.description()),
-        };
-        match file.read_exact(chr_data) {
-            Ok(file) => file,
-            Err(why) => panic!("Error reading {}: {}", display, why.description()),
-        };
+        buffer.read_exact(pgr_data).unwrap();
+        buffer.read_exact(chr_data).unwrap();
 
         RomFile {
             header,
             pgr_data: pgr_data.to_vec(),
             chr_data: chr_data.to_vec(),
         }
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        Self::new(&mut BufReader::new(bytes))
+    }
+
+    pub fn from_file(path: &Path) -> Self {
+        Self::new(&mut File::open(&path).unwrap())
     }
 
     pub fn rel_address(&self, address: u16) -> u16 {
@@ -72,4 +62,12 @@ impl RomFile {
     }
 
     pub fn write(&self, _address: u16, _value: u8) {}
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn rom_file_load() {
+        super::RomFile::from_bytes(include_bytes!("../../test/nestest.nes"));
+    }
 }

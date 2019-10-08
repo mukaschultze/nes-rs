@@ -5,21 +5,18 @@ use crate::console::NesConsole;
 use crate::rom::rom_file::RomFile;
 use regex::Regex;
 use std::cell::RefCell;
-use std::fs::File;
-use std::io::prelude::*;
-use std::io::BufReader;
-use std::path::Path;
 use std::rc::Rc;
 use std::u16;
 use test::Bencher;
 
-const NESTEST_ROM: &str = "./test/nestest.nes";
-const LOG_FILE: &str = "./test/nestest.log"; // "./test/nestest.full.log"
+const LOG_FILE: &str = include_str!("../test/nestest.log"); // "../test/nestest.full.log"
 const LOG_REGEX_PATTERN : &str = r"([0-9A-F]{4})  ([0-9A-F]{2}) ([0-9A-F]{2}|\s{2}) ([0-9A-F]{2}|\s{2}) [ \*].{32}A:([0-9A-F]{2}) X:([0-9A-F]{2}) Y:([0-9A-F]{2}) P:([0-9A-F]{2}) SP:([0-9A-F]{2}) PPU:\s*(\d*),\s*(\d*) CYC:(\d+)";
 
-fn nes_with_rom(rom_path: &str, start_addr: u16) -> NesConsole {
-    let rom_path = Path::new(rom_path);
-    let rom = Rc::new(RefCell::new(RomFile::new(rom_path)));
+const ROM_NESTEST: &[u8] = include_bytes!("../test/nestest.nes");
+const ROM_DONKEY_KONG: &[u8] = include_bytes!("../test/Donkey Kong (World) (Rev A).nes");
+
+fn nes_with_rom(rom_bytes: &[u8], start_addr: u16) -> NesConsole {
+    let rom = Rc::new(RefCell::new(RomFile::from_bytes(rom_bytes)));
     let nes = NesConsole::new(rom);
 
     {
@@ -31,14 +28,11 @@ fn nes_with_rom(rom_path: &str, start_addr: u16) -> NesConsole {
 
 #[test]
 fn cpu_instructions() {
-    let log_file = File::open(Path::new(LOG_FILE)).unwrap();
-    let log_reader = BufReader::new(log_file);
     let regex = Regex::new(LOG_REGEX_PATTERN).unwrap();
-
-    let nes = nes_with_rom(NESTEST_ROM, 0xC000);
+    let nes = nes_with_rom(ROM_NESTEST, 0xC000);
     let mut cpu = nes.cpu.borrow_mut();
 
-    for line in log_reader.lines().map(|l| l.unwrap()) {
+    for line in LOG_FILE.lines() {
         let cap = regex.captures(&line).expect(&line);
         let addr = u16::from_str_radix(&cap[1], 16).unwrap();
         let opcode = u8::from_str_radix(&cap[2], 16).unwrap();
@@ -74,14 +68,12 @@ fn cpu_instructions() {
 }
 
 #[test]
+#[ignore]
 fn cpu_timings() {
-    let log_file = File::open(Path::new(LOG_FILE)).unwrap();
-    let log_reader = BufReader::new(log_file);
     let regex = Regex::new(LOG_REGEX_PATTERN).unwrap();
+    let mut nes = nes_with_rom(ROM_NESTEST, 0xC000);
 
-    let mut nes = nes_with_rom(NESTEST_ROM, 0xC000);
-
-    for line in log_reader.lines().map(|l| l.unwrap()) {
+    for line in LOG_FILE.lines() {
         let cap = regex.captures(&line).expect(&line);
         let cyc = u64::from_str_radix(&cap[12], 10).unwrap();
 
@@ -97,14 +89,12 @@ fn cpu_timings() {
 }
 
 #[test]
+#[ignore]
 fn ppu_timings() {
-    let log_file = File::open(Path::new(LOG_FILE)).unwrap();
-    let log_reader = BufReader::new(log_file);
     let regex = Regex::new(LOG_REGEX_PATTERN).unwrap();
+    let mut nes = nes_with_rom(ROM_NESTEST, 0xC000);
 
-    let mut nes = nes_with_rom(NESTEST_ROM, 0xC000);
-
-    for line in log_reader.lines().map(|l| l.unwrap()) {
+    for line in LOG_FILE.lines() {
         let cap = regex.captures(&line).expect(&line);
         let ppu_x = u16::from_str_radix(&cap[10], 10).unwrap();
         let ppu_y = u16::from_str_radix(&cap[11], 10).unwrap();
@@ -123,8 +113,7 @@ fn ppu_timings() {
 
 #[bench]
 fn nes_speed(b: &mut Bencher) {
-    let rom_path = Path::new("../roms/Donkey Kong (World) (Rev A).nes");
-    let rom = Rc::new(RefCell::new(RomFile::new(rom_path)));
+    let rom = Rc::new(RefCell::new(RomFile::from_bytes(ROM_DONKEY_KONG)));
     let mut nes = NesConsole::new(rom);
 
     b.iter(|| nes.tick());
@@ -132,8 +121,7 @@ fn nes_speed(b: &mut Bencher) {
 
 #[bench]
 fn cpu_speed(b: &mut Bencher) {
-    let rom_path = Path::new("../roms/Donkey Kong (World) (Rev A).nes");
-    let rom = Rc::new(RefCell::new(RomFile::new(rom_path)));
+    let rom = Rc::new(RefCell::new(RomFile::from_bytes(ROM_DONKEY_KONG)));
     let nes = NesConsole::new(rom);
     let mut cpu = nes.cpu.borrow_mut();
 
@@ -142,8 +130,7 @@ fn cpu_speed(b: &mut Bencher) {
 
 #[bench]
 fn ppu_speed(b: &mut Bencher) {
-    let rom_path = Path::new("../roms/Donkey Kong (World) (Rev A).nes");
-    let rom = Rc::new(RefCell::new(RomFile::new(rom_path)));
+    let rom = Rc::new(RefCell::new(RomFile::from_bytes(ROM_DONKEY_KONG)));
     let nes = NesConsole::new(rom);
     let mut ppu = nes.ppu.borrow_mut();
 

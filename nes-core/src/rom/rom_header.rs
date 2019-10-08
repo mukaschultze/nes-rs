@@ -11,7 +11,9 @@ pub struct RomHeader {
 }
 
 impl RomHeader {
-    pub fn new(data: &[u8; 16]) -> RomHeader {
+    pub fn new(data: &[u8]) -> RomHeader {
+        assert_eq!(data.len(), 16, "ROM header should have 16 bytes");
+
         let mut nes: [u8; 4] = Default::default();
         nes.copy_from_slice(&data[0..4]);
 

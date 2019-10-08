@@ -51,7 +51,7 @@ fn main() {
     thread::spawn(move || {
         println!("Loading ROM from {}", args[1]);
         let rom_path = Path::new(&args[1]);
-        let rom = Rc::new(RefCell::new(RomFile::new(rom_path)));
+        let rom = Rc::new(RefCell::new(RomFile::from_file(rom_path)));
         let mut nes = NesConsole::new(rom);
         static mut RENDER_REQUEST: bool = false;
 
