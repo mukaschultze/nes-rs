@@ -44,4 +44,27 @@ impl NesConsole {
             self.ppu.borrow_mut().tick();
         }
     }
+
+    pub fn render_full_frame(&mut self) {
+        static mut RENDER_REQUEST: bool = false;
+
+        {
+            let mut ppu = self.ppu.borrow_mut();
+
+            ppu.v_blank_callback = Box::new(|| unsafe {
+                RENDER_REQUEST = true;
+            });
+        }
+
+        loop {
+            self.tick();
+
+            unsafe {
+                if RENDER_REQUEST {
+                    RENDER_REQUEST = false;
+                    break;
+                }
+            }
+        }
+    }
 }
