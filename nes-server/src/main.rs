@@ -25,7 +25,7 @@ use nes_core::rom::rom_file::RomFile;
 const WIDTH: u32 = 256;
 const HEIGHT: u32 = 240;
 
-const KEYMAPS: [(Keycode, ControllerDataLine); 8] = [
+const KEYMAPS: &[(Keycode, ControllerDataLine)] = &[
     (Keycode::A, ControllerDataLine::A),
     (Keycode::S, ControllerDataLine::B),
     (Keycode::Return, ControllerDataLine::SELECT),
@@ -84,14 +84,14 @@ fn main() {
                 Event::Quit { .. } => break 'main,
 
                 Event::KeyDown { keycode, .. } => {
-                    for (src, dst) in &KEYMAPS {
+                    for (src, dst) in KEYMAPS {
                         if keycode == Some(*src) {
                             controller.data.insert(*dst);
                         }
                     }
                 }
                 Event::KeyUp { keycode, .. } => {
-                    for (src, dst) in &KEYMAPS {
+                    for (src, dst) in KEYMAPS {
                         if keycode == Some(*src) {
                             controller.data.remove(*dst);
                         }
