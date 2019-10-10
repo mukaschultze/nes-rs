@@ -2,7 +2,7 @@
 
 members = [
     "nes-core",
-    "nes-server",
+    "nes-standalone",
 ]
 
 [profile.dev]
