@@ -10,7 +10,8 @@ rust:
   - nightly
 
 env:
-  - RELEASE=--release
+  - RELEASE_BUILD=--release
+  - RELEASE_BUILD=
 
 before_install:
   - sudo apt update && sudo apt install -y libgl1-mesa-dev cmake libsdl2-dev
@@ -20,14 +21,13 @@ matrix:
   allow_failures:
     - rust: nightly
   fast_finish: true
-  jobs:
-    include:
-      - stage: "Build"
-        script: cargo build --all $RELEASE --verbose
-      - stage: "Test"
-        script: cargo test --all $RELEASE --verbose
-      - stage: "Lint"
-        script: cargo fmt --all $RELEASE --verbose -- --check 
+
+- script: cargo build --all $RELEASE_BUILD --verbose
+  name: "Build"
+- script: cargo test --all $RELEASE_BUILD --verbose
+  name: "Test"
+- script: cargo fmt --all $RELEASE_BUILD --verbose -- --check 
+  name: "Lint"
 
 cache: cargo
 before_cache:
