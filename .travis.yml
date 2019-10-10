@@ -1,9 +1,7 @@
 # Based on the "trust" template v0.1.2
 # https://github.com/japaric/trust/tree/v0.1.2
 
-dist: trusty
 language: rust
-services: docker
 sudo: required
 
 rust:
@@ -11,28 +9,25 @@ rust:
   - beta
   - nightly
 
+env:
+  - RELEASE=--release
+
+before_install:
+  - sudo apt update && sudo apt install -y libgl1-mesa-dev cmake libsdl2-dev
+  - rustup self update
+
 matrix:
   allow_failures:
     - rust: nightly
   fast_finish: true
-
-before_install:
-  - sudo apt update && sudo apt install -y libgl1-mesa-dev cmake
-  - rustup self update
-
-matrix:
   jobs:
     include:
-      - stage: "Debug"
-        script: 
-        - cargo build --all --verbose
-        - cargo test --all --verbose
-        - cargo fmt --all --verbose -- --check 
-      - stage: "Release"
-        script: 
-        - cargo build --all --release --verbose
-        - cargo test --all --release --verbose
-        - cargo fmt --all --release --verbose -- --check 
+      - stage: "Build"
+        script: cargo build --all $RELEASE --verbose
+      - stage: "Test"
+        script: cargo test --all $RELEASE --verbose
+      - stage: "Lint"
+        script: cargo fmt --all $RELEASE --verbose -- --check 
 
 cache: cargo
 before_cache:
