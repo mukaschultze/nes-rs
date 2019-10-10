@@ -71,6 +71,7 @@ fn main() {
     let mut canvas: Canvas<Window> = window
         .into_canvas()
         .present_vsync() // this means the screen cannot render faster than your display rate (usually 60Hz or 144Hz)
+        .accelerated()
         .build()
         .unwrap();
 
