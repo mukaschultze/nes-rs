@@ -15,6 +15,7 @@ env:
 
 before_install:
   - sudo apt update && sudo apt install -y libgl1-mesa-dev cmake libsdl2-dev
+  - rustup component add rustfmt
   - rustup self update
 
 matrix:
@@ -22,12 +23,14 @@ matrix:
     - rust: nightly
   fast_finish: true
 
-- script: cargo build --all $RELEASE_BUILD --verbose
-  name: "Build"
-- script: cargo test --all $RELEASE_BUILD --verbose
-  name: "Test"
-- script: cargo fmt --all $RELEASE_BUILD --verbose -- --check 
-  name: "Lint"
+jobs:
+  include:
+  - stage: "Build"
+    script: cargo build --all $RELEASE_BUILD --verbose
+  - stage: "Test"
+    script: cargo test --all $RELEASE_BUILD --verbose
+  - stage: "Lint"
+    script: cargo fmt --all $RELEASE_BUILD --verbose -- --check 
 
 cache: cargo
 before_cache:
