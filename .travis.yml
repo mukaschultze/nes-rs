@@ -15,7 +15,6 @@ env:
 
 before_install:
   - sudo apt update && sudo apt install -y libgl1-mesa-dev cmake libsdl2-dev
-  - rustup component add rustfmt
   - rustup self update
 
 matrix:
@@ -30,6 +29,7 @@ script:
 jobs:
   include:
   - stage: lint
+    before_install: rustup component add rustfmt
     script: cargo fmt --all $RELEASE_BUILD --verbose -- --check 
 
 cache: cargo
