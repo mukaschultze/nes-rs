@@ -2,9 +2,12 @@ extern crate regex;
 // extern crate test;
 
 use crate::console::NesConsole;
+use crate::palette;
 use crate::rom::rom_file::RomFile;
 use regex::Regex;
 use std::cell::RefCell;
+use std::fs::File;
+use std::path::Path;
 use std::rc::Rc;
 use std::u16;
 // use test::Bencher;
@@ -108,6 +111,33 @@ fn ppu_timings() {
 
         assert_eq!(ppu_x, dot, "ppu x\n{}\n", line);
         assert_eq!(ppu_y, scanline, "ppu y\n{}\n", line);
+    }
+}
+
+#[test]
+fn screenshot() {
+    const ROM_DONKEY_KONG: &[u8] = include_bytes!("../test/Donkey Kong (World) (Rev A).nes");
+    let rom = Rc::new(RefCell::new(RomFile::from_bytes(ROM_DONKEY_KONG)));
+    let mut nes = NesConsole::new(rom);
+
+    for _ in 0..15 {
+        nes.render_full_frame();
+    }
+
+    nes.screenshot(&Path::new("screenshot.png"));
+
+    let output = nes.ppu.borrow().output;
+    let decoder = png::Decoder::new(File::open("screenshot.png").unwrap());
+    let (info, mut reader) = decoder.read_info().unwrap();
+    let mut buf = vec![0; info.buffer_size()];
+
+    reader.next_frame(&mut buf).unwrap();
+
+    for i in 0..output.len() {
+        let output = palette::get_rgb_color_split(output[i]);
+        let screenshot = (buf[i * 3 + 0], buf[i * 3 + 1], buf[i * 3 + 2]);
+
+        assert_eq!(output, screenshot, "Screenshot and output don't match");
     }
 }
 

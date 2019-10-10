@@ -1,8 +1,16 @@
+extern crate png;
+
 use crate::bus::DataBus;
 use crate::cpu::CPU6502;
+use crate::palette;
 use crate::ppu::Ppu;
 use crate::rom::rom_file::RomFile;
+
+use std::fs::File;
+use std::io::BufWriter;
+
 use std::cell::RefCell;
+use std::path::Path;
 use std::rc::Rc;
 use std::u16;
 
@@ -66,5 +74,29 @@ impl NesConsole {
                 }
             }
         }
+    }
+
+    pub fn screenshot(&self, path: &Path) {
+        let file = File::create(path).unwrap();
+        let ref mut w = BufWriter::new(file);
+        let mut encoder = png::Encoder::new(w, 256, 240);
+
+        encoder.set_color(png::ColorType::RGB);
+        encoder.set_depth(png::BitDepth::Eight);
+        encoder.set_compression(png::Compression::Default);
+        encoder.set_filter(png::FilterType::NoFilter);
+
+        let output = self.ppu.borrow().output;
+        let mut writer = encoder.write_header().unwrap();
+        let mut data = vec![0u8; output.len() * 3];
+
+        for i in 0..output.len() {
+            let (r, g, b) = palette::get_rgb_color_split(output[i]);
+
+            data[i * 3 + 0] = r;
+            data[i * 3 + 1] = g;
+            data[i * 3 + 2] = b;
+        }
+        writer.write_image_data(&data).unwrap();
     }
 }
