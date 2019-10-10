@@ -133,6 +133,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "nes-test-suite"
+version = "0.1.0"
+dependencies = [
+ "nes-core 0.1.0",
+]
+
+[[package]]
 name = "num"
 version = "0.1.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"

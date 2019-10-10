@@ -6,7 +6,7 @@ sudo: required
 
 rust:
   - stable
-  - beta
+  # - beta
   - nightly
 
 env:
@@ -30,7 +30,7 @@ jobs:
   include:
   - stage: lint
     before_install: rustup component add rustfmt
-    script: cargo fmt --all $RELEASE_BUILD --verbose -- --check 
+    script: cargo fmt --all -- --check 
 
 cache: cargo
 before_cache:

@@ -3,6 +3,7 @@
 members = [
     "nes-core",
     "nes-standalone",
+    "nes-test-suite",
 ]
 
 [profile.dev]
