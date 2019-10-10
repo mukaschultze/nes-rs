@@ -23,13 +23,13 @@ matrix:
     - rust: nightly
   fast_finish: true
 
+script:
+  - cargo build --all $RELEASE_BUILD --verbose
+  - cargo test --all $RELEASE_BUILD --verbose
+
 jobs:
   include:
-  - stage: "Build"
-    script: cargo build --all $RELEASE_BUILD --verbose
-  - stage: "Test"
-    script: cargo test --all $RELEASE_BUILD --verbose
-  - stage: "Lint"
+  - stage: lint
     script: cargo fmt --all $RELEASE_BUILD --verbose -- --check 
 
 cache: cargo
