@@ -29,7 +29,9 @@ script:
 jobs:
   include:
   - stage: lint
-    before_install: rustup component add rustfmt
+    before_install: 
+      - rustup component add clippy
+      - rustup component add rustfmt
     script: cargo fmt --all -- --check 
 
 cache: cargo
