@@ -1,5 +1,6 @@
-#![windows_subsystem = "windows"]
+// #![windows_subsystem = "windows"]
 
+extern crate gl;
 extern crate nes_core;
 extern crate sdl2;
 extern crate stopwatch;
@@ -70,12 +71,15 @@ fn main() {
 
     let mut canvas: Canvas<Window> = window
         .into_canvas()
+        .index(find_sdl_gl_driver().unwrap())
         .present_vsync() // this means the screen cannot render faster than your display rate (usually 60Hz or 144Hz)
         .accelerated()
         .build()
         .unwrap();
 
     canvas.set_logical_size(WIDTH, HEIGHT).unwrap();
+    gl::load_with(|name| video_subsystem.gl_get_proc_address(name) as *const _);
+    canvas.window().gl_set_context_to_current().unwrap();
 
     'main: loop {
         nes.render_full_frame();
@@ -137,4 +141,13 @@ fn main() {
         //     1000f64 / sw.elapsed_ms() as f64
         // );
     }
+}
+
+fn find_sdl_gl_driver() -> Option<u32> {
+    for (index, item) in sdl2::render::drivers().enumerate() {
+        if item.name == "opengl" {
+            return Some(index as u32);
+        }
+    }
+    None
 }
