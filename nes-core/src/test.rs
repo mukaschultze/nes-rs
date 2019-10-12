@@ -141,6 +141,29 @@ fn screenshot() {
     }
 }
 
+#[test]
+fn gif() {
+    // const ROM_DONKEY_KONG: &[u8] = include_bytes!("../test/Donkey Kong (World) (Rev A).nes");
+    const ROM_DONKEY_KONG: &[u8] = include_bytes!("../../roms/Testing/NEStress.NES");
+    let rom = Rc::new(RefCell::new(RomFile::from_bytes(ROM_DONKEY_KONG)));
+    let mut nes = NesConsole::new(rom);
+    let mut encoder = nes.get_gif_encoder(Path::new("test.gif"));
+
+    for _ in 0..250 {
+        nes.render_full_frame();
+        nes.render_full_frame();
+        nes.frame_to_gif(&mut encoder);
+    }
+}
+
+// #[bench]
+// fn render_frame(b: &mut Bencher) {
+//     let rom = Rc::new(RefCell::new(RomFile::from_bytes(ROM_DONKEY_KONG)));
+//     let mut nes = NesConsole::new(rom);
+
+//     b.iter(|| nes.render_full_frame());
+// }
+
 // #[bench]
 // fn nes_speed(b: &mut Bencher) {
 //     let rom = Rc::new(RefCell::new(RomFile::from_bytes(ROM_DONKEY_KONG)));

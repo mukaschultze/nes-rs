@@ -1,3 +1,4 @@
+extern crate gif;
 extern crate png;
 
 use crate::bus::DataBus;
@@ -6,10 +7,13 @@ use crate::palette;
 use crate::ppu::Ppu;
 use crate::rom::rom_file::RomFile;
 
+use gif::{Encoder, Frame, Repeat, SetParameter};
+
+use std::borrow::Cow;
+use std::cell::RefCell;
 use std::fs::File;
 use std::io::BufWriter;
-
-use std::cell::RefCell;
+use std::io::Write;
 use std::path::Path;
 use std::rc::Rc;
 use std::u16;
@@ -98,5 +102,25 @@ impl NesConsole {
             data[i * 3 + 2] = b;
         }
         writer.write_image_data(&data).unwrap();
+    }
+
+    pub fn get_gif_encoder(&self, path: &Path) -> Encoder<File> {
+        let (width, height) = (256, 240);
+        let color_map = palette::get_full_palette_split();
+        let image = File::create(path).unwrap();
+        let mut encoder = Encoder::new(image, width, height, color_map).unwrap();
+        encoder.set(Repeat::Infinite).unwrap();
+        encoder
+    }
+
+    pub fn frame_to_gif<W: Write>(&self, encoder: &mut Encoder<W>) {
+        let (width, height) = (256, 240);
+        let output = self.ppu.borrow().output;
+        let mut frame = Frame::default();
+        frame.width = width;
+        frame.height = height;
+        frame.delay = 2;
+        frame.buffer = Cow::Borrowed(&output);
+        encoder.write_frame(&frame).unwrap();
     }
 }

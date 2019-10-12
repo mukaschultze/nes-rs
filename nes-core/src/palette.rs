@@ -37,3 +37,11 @@ pub fn get_rgb_color_split(color_idx: u8) -> (u8, u8, u8) {
         COLORS_SPLIT[idx + 2],
     )
 }
+
+pub fn get_full_palette() -> &'static [u32] {
+    COLORS
+}
+
+pub fn get_full_palette_split() -> &'static [u8] {
+    COLORS_SPLIT
+}
