@@ -1,0 +1,8 @@
+# https://help.github.com/en/articles/configuring-git-to-handle-line-endings
+
+* text=auto
+*.rs text eol=lf
+*.toml text eol=lf
+
+# Denote all files that are truly binary and should not be modified.
+*.nes binary
