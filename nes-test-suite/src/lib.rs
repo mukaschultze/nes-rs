@@ -4,13 +4,14 @@ mod test {
 
     use nes_core::console::NesConsole;
     use nes_core::rom::rom_file::RomFile;
-    use std::cell::RefCell;
-    use std::rc::Rc;
 
     fn nes_with_rom(rom_bytes: &[u8]) -> NesConsole {
-        let rom = Rc::new(RefCell::new(RomFile::from_bytes(rom_bytes)));
+        let mut rom = RomFile::from_bytes(rom_bytes);
+        let mut nes = NesConsole::new();
 
-        NesConsole::new(rom)
+        nes.bus.borrow_mut().connect_cartridge(&mut rom);
+        nes.reset();
+        nes
     }
 
     // fn run_for_frames_and_screenshot(rom_bytes: &[u8], frames: u32, screenshot_name: &str) {

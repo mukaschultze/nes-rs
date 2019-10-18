@@ -5,22 +5,20 @@ use crate::console::NesConsole;
 use crate::palette;
 use crate::rom::rom_file::RomFile;
 use regex::Regex;
-use std::cell::RefCell;
 use std::fs::File;
 use std::path::Path;
-use std::rc::Rc;
 use std::u16;
 // use test::Bencher;
 
 const LOG_FILE: &str = include_str!("../test/nestest.log"); // "../test/nestest.full.log"
 const LOG_REGEX_PATTERN : &str = r"([0-9A-F]{4})  ([0-9A-F]{2}) ([0-9A-F]{2}|\s{2}) ([0-9A-F]{2}|\s{2}) [ \*].{32}A:([0-9A-F]{2}) X:([0-9A-F]{2}) Y:([0-9A-F]{2}) P:([0-9A-F]{2}) SP:([0-9A-F]{2}) PPU:\s*(\d*),\s*(\d*) CYC:(\d+)";
-
 const ROM_NESTEST: &[u8] = include_bytes!("../test/nestest.nes");
-const ROM_DONKEY_KONG: &[u8] = include_bytes!("../test/Donkey Kong (World) (Rev A).nes");
 
 fn nes_with_rom(rom_bytes: &[u8], start_addr: u16) -> NesConsole {
-    let rom = Rc::new(RefCell::new(RomFile::from_bytes(rom_bytes)));
-    let nes = NesConsole::new(rom);
+    let mut rom = RomFile::from_bytes(rom_bytes);
+    let nes = NesConsole::new();
+
+    nes.bus.borrow_mut().connect_cartridge(&mut rom);
 
     {
         let mut cpu = nes.cpu.borrow_mut();
@@ -115,10 +113,14 @@ fn ppu_timings() {
 }
 
 #[test]
+#[ignore]
 fn screenshot() {
     const ROM_DONKEY_KONG: &[u8] = include_bytes!("../test/Donkey Kong (World) (Rev A).nes");
-    let rom = Rc::new(RefCell::new(RomFile::from_bytes(ROM_DONKEY_KONG)));
-    let mut nes = NesConsole::new(rom);
+    let mut rom = RomFile::from_bytes(ROM_DONKEY_KONG);
+    let mut nes = NesConsole::new();
+
+    nes.bus.borrow_mut().connect_cartridge(&mut rom);
+    nes.reset();
 
     for _ in 0..15 {
         nes.render_full_frame();
@@ -142,12 +144,16 @@ fn screenshot() {
 }
 
 #[test]
+#[ignore]
 fn gif() {
     // const ROM_DONKEY_KONG: &[u8] = include_bytes!("../test/Donkey Kong (World) (Rev A).nes");
     const ROM_DONKEY_KONG: &[u8] = include_bytes!("../../roms/Testing/NEStress.NES");
-    let rom = Rc::new(RefCell::new(RomFile::from_bytes(ROM_DONKEY_KONG)));
-    let mut nes = NesConsole::new(rom);
+    let mut rom = RomFile::from_bytes(ROM_DONKEY_KONG);
+    let mut nes = NesConsole::new();
     let mut encoder = nes.get_gif_encoder(Path::new("test.gif"));
+
+    nes.bus.borrow_mut().connect_cartridge(&mut rom);
+    nes.reset();
 
     for _ in 0..250 {
         nes.render_full_frame();

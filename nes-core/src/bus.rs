@@ -1,5 +1,6 @@
 use crate::controller::Controller;
 use crate::ppu::Ppu;
+use crate::rom::mapper::Mapper;
 use crate::rom::rom_file::RomFile;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -8,21 +9,27 @@ const RAM_SIZE: usize = 0x0800;
 
 pub struct DataBus {
     ram: [u8; RAM_SIZE],
-    rom: Rc<RefCell<RomFile>>,
+    pub mapper: Option<Rc<RefCell<dyn Mapper>>>,
     pub ppu: Option<Rc<RefCell<Ppu>>>,
     pub controller0: Option<Controller>,
     pub controller1: Option<Controller>,
 }
 
 impl DataBus {
-    pub fn new(rom: Rc<RefCell<RomFile>>) -> Self {
+    pub fn new() -> Self {
         Self {
             ram: [0; RAM_SIZE],
-            rom,
+            mapper: None,
             ppu: None,
             controller0: None,
             controller1: None,
         }
+    }
+
+    pub fn connect_cartridge(&mut self, rom: &mut RomFile) {
+        let b = Rc::new(RefCell::new(rom.get_mapper()));
+        self.mapper = Some(b.clone());
+        self.ppu.as_mut().unwrap().borrow_mut().mapper = Some(b.clone());
     }
 
     /// https://wiki.nesdev.com/w/index.php/CPU_memory_map
@@ -37,20 +44,28 @@ impl DataBus {
                 .borrow_mut()
                 .read_register_cpu_address(address),
             0x4014 => 0, // OAMDMA $4014 is write only!
-            0x4016 => match self.controller0.as_mut() {
-                Some(controller) => controller.output(),
-                None => 0,
-            },
-            0x4017 => match self.controller1.as_mut() {
-                Some(controller) => controller.output(),
-                None => 0,
-            },
+            0x4016 => {
+                if let Some(controller) = self.controller0.as_mut() {
+                    controller.output()
+                } else {
+                    0
+                }
+            }
+            0x4017 => {
+                if let Some(controller) = self.controller1.as_mut() {
+                    controller.output()
+                } else {
+                    0
+                }
+            }
             0x4000..=0x401F => 0, // APU and IO registers
-            0x4020..=0x5FFF => 0, // Cartridge space
-            0x6000..=0x7FFF => 0, // Battery Backed Save or Work RAM
-            0x8000..=0xFFFF => {
-                let rom = self.rom.borrow();
-                rom.read(address)
+            0x4020..=0x5FFF => 0,
+            0x6000..=0xFFFF => {
+                if let Some(mapper) = self.mapper.as_mut() {
+                    mapper.borrow_mut().read_prg(address)
+                } else {
+                    0
+                }
             }
         }
     }
@@ -74,20 +89,22 @@ impl DataBus {
                     ppu.oam_memory[unchecked_add!(i, oam_addr) as usize % 256] = v;
                 }
             }
-            0x4016 => match self.controller0.as_mut() {
-                Some(controller) => controller.input(value),
-                None => {}
-            },
-            0x4017 => match self.controller1.as_mut() {
-                Some(controller) => controller.input(value),
-                None => {}
-            },
+            0x4016 => {
+                if let Some(controller) = self.controller0.as_mut() {
+                    controller.input(value)
+                }
+            }
+            0x4017 => {
+                if let Some(controller) = self.controller1.as_mut() {
+                    controller.input(value)
+                }
+            }
             0x4000..=0x401F => {} // APU and IO registers
-            0x4020..=0x5FFF => {} // Cartridge space
-            0x6000..=0x7FFF => {} // Battery Backed Save or Work RAM
-            0x8000..=0xFFFF => {
-                let rom = self.rom.borrow_mut();
-                rom.write(address, value)
+            0x4020..=0x5FFF => {}
+            0x6000..=0xFFFF => {
+                if let Some(mapper) = self.mapper.as_mut() {
+                    mapper.borrow_mut().write_prg(address, value);
+                }
             }
         }
     }

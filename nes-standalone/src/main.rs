@@ -1,4 +1,4 @@
-// #![windows_subsystem = "windows"]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 extern crate gl;
 extern crate nes_core;
@@ -14,10 +14,8 @@ use sdl2::rect::Point;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 
-use std::cell::RefCell;
 use std::env;
 use std::path::Path;
-use std::rc::Rc;
 
 use nes_core::console::NesConsole;
 use nes_core::controller::Controller;
@@ -48,8 +46,10 @@ fn main() {
 
     println!("Loading ROM from {}", args[1]);
     let rom_path = Path::new(&args[1]);
-    let rom = Rc::new(RefCell::new(RomFile::from_file(rom_path)));
-    let mut nes = NesConsole::new(rom);
+    let mut rom = RomFile::from_file(rom_path);
+    let mut nes = NesConsole::new();
+
+    nes.bus.borrow_mut().connect_cartridge(&mut rom);
 
     {
         let mut bus = nes.bus.borrow_mut();
@@ -81,28 +81,38 @@ fn main() {
     gl::load_with(|name| video_subsystem.gl_get_proc_address(name) as *const _);
     canvas.window().gl_set_context_to_current().unwrap();
 
+    nes.reset();
+
     'main: loop {
         nes.render_full_frame();
 
-        let mut bus = nes.bus.borrow_mut();
-        let controller = bus.controller0.as_mut().expect("No controller 0 connected");
         for evt in event_pump.poll_iter() {
             match evt {
                 Event::Quit { .. } => break 'main,
 
                 Event::KeyDown { keycode, .. } => {
-                    for (src, dst) in KEYMAPS {
-                        if keycode == Some(*src) {
-                            controller.data.insert(*dst);
+                    if let Some(controller) = nes.bus.borrow_mut().controller0.as_mut() {
+                        for (src, dst) in KEYMAPS {
+                            if keycode == Some(*src) {
+                                controller.data.insert(*dst);
+                            }
                         }
                     }
                 }
                 Event::KeyUp { keycode, .. } => {
-                    for (src, dst) in KEYMAPS {
-                        if keycode == Some(*src) {
-                            controller.data.remove(*dst);
+                    if let Some(controller) = nes.bus.borrow_mut().controller0.as_mut() {
+                        for (src, dst) in KEYMAPS {
+                            if keycode == Some(*src) {
+                                controller.data.remove(*dst);
+                            }
                         }
                     }
+
+                    match keycode {
+                        Some(Keycode::R) => nes.reset(),
+                        Some(Keycode::T) => nes.screenshot(&Path::new("nes_screenshot.png")),
+                        _ => {}
+                    };
                 }
 
                 // evt => println!("Event received: {:?}", evt),

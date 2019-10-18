@@ -1,5 +1,5 @@
 use crate::cpu::CPU6502;
-use crate::rom::rom_file::RomFile;
+use crate::rom::mapper::Mapper;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -102,7 +102,7 @@ pub struct Ppu {
     w: bool,
 
     pub output: [u8; 256 * 240], // 256x240 pixels
-    vram: [u8; 0x4000],          // 16kb
+    vram: [u8; 0x1000],          // 2kb // TODO: Implement mirroring and fix the VRAM size
     pub palette_vram: [u8; 32],
     vram_buffer: u8,
 
@@ -140,12 +140,13 @@ pub struct Ppu {
 
     cpu: Rc<RefCell<CPU6502>>,
 
+    pub mapper: Option<Rc<RefCell<dyn Mapper>>>,
     pub v_blank_callback: Box<dyn FnMut()>,
 }
 
 impl Ppu {
-    pub fn new(cpu: Rc<RefCell<CPU6502>>, rom: Rc<RefCell<RomFile>>) -> Self {
-        let mut ppu = Ppu {
+    pub fn new(cpu: Rc<RefCell<CPU6502>>) -> Self {
+        Ppu {
             ppuctrl: Default::default(),
             ppumask: Default::default(),
             ppustatus: Default::default(),
@@ -155,7 +156,7 @@ impl Ppu {
             x: 0,
             w: false,
             output: [0; 256 * 240],
-            vram: [0; 0x4000],
+            vram: [0; 0x1000],
             palette_vram: [0; 32],
             vram_buffer: 0,
             dot: 0,
@@ -176,19 +177,22 @@ impl Ppu {
             sprite_x_pos: [0; 8],
             sprite_count: 0,
             cpu,
+            mapper: None,
             v_blank_callback: Box::new(|| {}),
-        };
-
-        let r = rom.as_ref().borrow();
-
-        ppu.vram[0..0x2000].copy_from_slice(&r.chr_data[0..0x2000]);
-
-        ppu
+        }
     }
 
-    pub fn read_vram(&self, mut addr: u16) -> u8 {
+    pub fn read_vram(&mut self, mut addr: u16) -> u8 {
         match addr {
-            0x3000..=0x3EFF => self.vram[(addr as usize - 0x1000) & 0x3FFF], // Mirrors of $2000-$2EFF
+            0x0000..=0x1FFF => {
+                if let Some(mapper) = self.mapper.as_mut() {
+                    mapper.borrow_mut().read_chr(addr)
+                } else {
+                    0
+                }
+            }
+            0x2000..=0x2FFF => self.vram[(addr - 0x2000) as usize],
+            0x3000..=0x3EFF => self.vram[(addr - 0x3000) as usize], // Mirrors of $2000-$2EFF
             0x3F00..=0x3FFF => {
                 // Palette RAM indexes
                 if addr % 4 == 0 {
@@ -196,13 +200,19 @@ impl Ppu {
                 }
                 self.palette_vram[addr as usize & 0x1F]
             }
-            _ => self.vram[addr as usize & 0x3FFF],
+            0x4000..=0xFFFF => unreachable!(),
         }
     }
 
     pub fn write_vram(&mut self, mut addr: u16, value: u8) {
         match addr {
-            0x3000..=0x3EFF => self.vram[(addr as usize - 0x1000) & 0x3FFF] = value, // Mirrors of $2000-$2EFF
+            0x0000..=0x1FFF => {
+                if let Some(mapper) = self.mapper.as_mut() {
+                    mapper.borrow_mut().write_chr(addr, value);
+                }
+            }
+            0x2000..=0x2FFF => self.vram[(addr - 0x2000) as usize] = value,
+            0x3000..=0x3EFF => self.vram[(addr - 0x3000) as usize] = value, // Mirrors of $2000-$2EFF
             0x3F00..=0x3FFF => {
                 // Palette RAM indexes
                 if addr % 4 == 0 {
@@ -210,7 +220,7 @@ impl Ppu {
                 }
                 self.palette_vram[addr as usize & 0x1F] = value;
             }
-            _ => self.vram[addr as usize & 0x3FFF] = value,
+            0x4000..=0xFFFF => unreachable!(),
         }
     }
 

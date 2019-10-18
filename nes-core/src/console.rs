@@ -5,7 +5,6 @@ use crate::bus::DataBus;
 use crate::cpu::CPU6502;
 use crate::palette;
 use crate::ppu::Ppu;
-use crate::rom::rom_file::RomFile;
 
 use gif::{Encoder, Frame, Repeat, SetParameter};
 
@@ -25,26 +24,30 @@ pub struct NesConsole {
 }
 
 impl NesConsole {
-    pub fn new(rom: Rc<RefCell<RomFile>>) -> NesConsole {
-        let bus = Rc::new(RefCell::new(DataBus::new(rom.clone())));
+    pub fn new() -> NesConsole {
+        let bus = Rc::new(RefCell::new(DataBus::new()));
         let cpu = Rc::new(RefCell::new(CPU6502::new(bus.clone())));
-        let ppu = Rc::new(RefCell::new(Ppu::new(cpu.clone(), rom.clone())));
+        let ppu = Rc::new(RefCell::new(Ppu::new(cpu.clone())));
 
         {
-            let cpu = cpu.clone();
-            let bus = bus.clone();
-            let mut bus_mut = bus.borrow_mut();
-            let mut cpu_mut = cpu.borrow_mut();
-
-            bus_mut.ppu = Some(ppu.clone());
-
-            let pc_high = bus_mut.read(0xFFFD);
-            let pc_low = bus_mut.read(0xFFFC);
-
-            cpu_mut.pc = join_bytes!(pc_high, pc_low);
+            let mut bus = bus.borrow_mut();
+            bus.ppu = Some(ppu.clone());
         }
 
         NesConsole { bus, cpu, ppu }
+    }
+
+    pub fn reset(&mut self) {
+        println!("Reset!");
+
+        // http://wiki.nesdev.com/w/index.php/CPU_power_up_state
+        let mut cpu = self.cpu.borrow_mut();
+        let mut bus = self.bus.borrow_mut();
+        let pc_high = bus.read(0xFFFD);
+        let pc_low = bus.read(0xFFFC);
+        cpu.sp -= 3; // S was decremented by 3 (but nothing was written to the stack)
+        cpu.sr |= 0b0000_0100; // The I (IRQ disable) flag was set to true (status ORed with $04)
+        cpu.pc = join_bytes!(pc_high, pc_low);
     }
 
     pub fn tick(&mut self) {
