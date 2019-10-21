@@ -126,7 +126,7 @@ fn screenshot() {
         nes.render_full_frame();
     }
 
-    nes.screenshot(&Path::new("screenshot.png"));
+    nes.screenshot("screenshot.png");
 
     let output = nes.ppu.borrow().output;
     let decoder = png::Decoder::new(File::open("screenshot.png").unwrap());

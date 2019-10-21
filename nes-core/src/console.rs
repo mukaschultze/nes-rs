@@ -83,8 +83,8 @@ impl NesConsole {
         }
     }
 
-    pub fn screenshot(&self, path: &Path) {
-        let file = File::create(path).unwrap();
+    pub fn screenshot(&self, path: &str) {
+        let file = File::create(Path::new(path)).unwrap();
         let ref mut w = BufWriter::new(file);
         let mut encoder = png::Encoder::new(w, 256, 240);
 

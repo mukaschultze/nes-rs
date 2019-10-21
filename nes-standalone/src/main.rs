@@ -110,7 +110,7 @@ fn main() {
 
                     match keycode {
                         Some(Keycode::R) => nes.reset(),
-                        Some(Keycode::T) => nes.screenshot(&Path::new("nes_screenshot.png")),
+                        Some(Keycode::T) => nes.screenshot("nes_screenshot.png"),
                         _ => {}
                     };
                 }
