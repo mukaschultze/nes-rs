@@ -2,6 +2,7 @@
 
 extern crate gl;
 extern crate nes_core;
+extern crate nfd;
 extern crate sdl2;
 extern crate stopwatch;
 
@@ -16,6 +17,9 @@ use sdl2::video::Window;
 
 use std::env;
 use std::path::Path;
+use std::process::exit;
+
+use nfd::Response;
 
 use nes_core::console::NesConsole;
 use nes_core::controller::Controller;
@@ -37,15 +41,26 @@ const KEYMAPS: &[(Keycode, ControllerDataLine)] = &[
     (Keycode::Right, ControllerDataLine::RIGHT),
 ];
 
-fn main() {
+fn main() -> ! {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
-        panic!("No ROM file specified");
-    }
+        let result = nfd::open_file_dialog(Some("nes"), None).unwrap_or_else(|e| {
+            panic!(e);
+        });
 
-    println!("Loading ROM from {}", args[1]);
-    let rom_path = Path::new(&args[1]);
+        match result {
+            Response::Okay(file_path) => start(Path::new(&file_path)),
+            Response::OkayMultiple(_files) => unreachable!(),
+            Response::Cancel => panic!("No ROM file specified"),
+        }
+    } else {
+        start(Path::new(&args[1]));
+    }
+}
+
+fn start(rom_path: &Path) -> ! {
+    println!("Loading ROM from {}", rom_path.display());
     let mut rom = RomFile::from_file(rom_path);
     let mut nes = NesConsole::new();
 
@@ -83,12 +98,12 @@ fn main() {
 
     nes.reset();
 
-    'main: loop {
+    loop {
         nes.render_full_frame();
 
         for evt in event_pump.poll_iter() {
             match evt {
-                Event::Quit { .. } => break 'main,
+                Event::Quit { .. } => exit(0),
 
                 Event::KeyDown { keycode, .. } => {
                     if let Some(controller) = nes.bus.borrow_mut().controller0.as_mut() {

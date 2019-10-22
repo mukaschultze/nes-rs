@@ -14,7 +14,7 @@ env:
   - RELEASE_BUILD=
 
 before_install:
-  - sudo apt update && sudo apt install -y libgl1-mesa-dev cmake libsdl2-dev
+  - sudo apt update && sudo apt install -y libgl1-mesa-dev cmake libsdl2-dev libgtk-3-dev
   - rustup self update
 
 matrix:
