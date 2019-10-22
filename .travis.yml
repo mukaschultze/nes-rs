@@ -23,8 +23,8 @@ matrix:
   fast_finish: true
 
 script:
-  - cargo build --all $RELEASE_BUILD --verbose
-  - cargo test --all $RELEASE_BUILD --verbose
+  - cargo build $RELEASE_BUILD --verbose
+  - cargo test $RELEASE_BUILD --verbose
 
 jobs:
   include:
@@ -32,7 +32,7 @@ jobs:
     before_install: 
       - rustup component add clippy
       - rustup component add rustfmt
-    script: cargo fmt --all -- --check 
+    script: cargo fmt -- --check 
 
 cache: cargo
 before_cache:

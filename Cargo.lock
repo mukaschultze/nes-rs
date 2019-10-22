@@ -198,6 +198,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "nes-benchmarks"
+version = "0.1.0"
+dependencies = [
+ "nes-core 0.1.0",
+]
+
+[[package]]
 name = "nes-core"
 version = "0.1.0"
 dependencies = [

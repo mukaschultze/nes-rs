@@ -1,5 +1,4 @@
 extern crate regex;
-// extern crate test;
 
 use crate::console::NesConsole;
 use crate::palette;
@@ -8,7 +7,6 @@ use regex::Regex;
 use std::fs::File;
 use std::path::Path;
 use std::u16;
-// use test::Bencher;
 
 const LOG_FILE: &str = include_str!("../test/nestest.log"); // "../test/nestest.full.log"
 const LOG_REGEX_PATTERN : &str = r"([0-9A-F]{4})  ([0-9A-F]{2}) ([0-9A-F]{2}|\s{2}) ([0-9A-F]{2}|\s{2}) [ \*].{32}A:([0-9A-F]{2}) X:([0-9A-F]{2}) Y:([0-9A-F]{2}) P:([0-9A-F]{2}) SP:([0-9A-F]{2}) PPU:\s*(\d*),\s*(\d*) CYC:(\d+)";
@@ -161,37 +159,3 @@ fn gif() {
         nes.frame_to_gif(&mut encoder);
     }
 }
-
-// #[bench]
-// fn render_frame(b: &mut Bencher) {
-//     let rom = Rc::new(RefCell::new(RomFile::from_bytes(ROM_DONKEY_KONG)));
-//     let mut nes = NesConsole::new(rom);
-
-//     b.iter(|| nes.render_full_frame());
-// }
-
-// #[bench]
-// fn nes_speed(b: &mut Bencher) {
-//     let rom = Rc::new(RefCell::new(RomFile::from_bytes(ROM_DONKEY_KONG)));
-//     let mut nes = NesConsole::new(rom);
-
-//     b.iter(|| nes.tick());
-// }
-
-// #[bench]
-// fn cpu_speed(b: &mut Bencher) {
-//     let rom = Rc::new(RefCell::new(RomFile::from_bytes(ROM_DONKEY_KONG)));
-//     let nes = NesConsole::new(rom);
-//     let mut cpu = nes.cpu.borrow_mut();
-
-//     b.iter(|| cpu.process_next_opcode());
-// }
-
-// #[bench]
-// fn ppu_speed(b: &mut Bencher) {
-//     let rom = Rc::new(RefCell::new(RomFile::from_bytes(ROM_DONKEY_KONG)));
-//     let nes = NesConsole::new(rom);
-//     let mut ppu = nes.ppu.borrow_mut();
-
-//     b.iter(|| ppu.tick());
-// }

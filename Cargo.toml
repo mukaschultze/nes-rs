@@ -3,7 +3,9 @@ members = [
     "nes-core",
     "nes-standalone",
     "nes-test-suite",
+    "benchmarks"
 ]
+default-members = ["nes-*"]
 
 [profile.dev]
 opt-level = 3
