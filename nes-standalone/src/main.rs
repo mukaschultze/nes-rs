@@ -3,6 +3,7 @@
 extern crate gl;
 extern crate nes_core;
 extern crate nfd;
+extern crate png;
 extern crate sdl2;
 extern crate stopwatch;
 
@@ -10,9 +11,10 @@ use stopwatch::Stopwatch;
 
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use sdl2::pixels::Color;
+use sdl2::pixels::{Color, PixelFormatEnum};
 use sdl2::rect::Point;
 use sdl2::render::Canvas;
+use sdl2::surface::Surface;
 use sdl2::video::Window;
 
 use std::env;
@@ -77,12 +79,14 @@ fn start(rom_path: &Path) -> ! {
     let video_subsystem = sdl.video().unwrap();
     let mut event_pump = sdl.event_pump().unwrap();
 
-    let window = video_subsystem
+    let mut window = video_subsystem
         .window("NES", WIDTH, HEIGHT)
         .resizable()
         .opengl()
         .build()
         .unwrap();
+
+    set_icon(&mut window);
 
     let mut canvas: Canvas<Window> = window
         .into_canvas()
@@ -175,4 +179,23 @@ fn find_sdl_gl_driver() -> Option<u32> {
         }
     }
     None
+}
+
+fn set_icon(window: &mut Window) {
+    const ICON_SRC: &[u8] = include_bytes!("./icon.png");
+    let decoder = png::Decoder::new(ICON_SRC);
+    let (info, mut reader) = decoder.read_info().unwrap();
+    let mut buf = vec![0; info.buffer_size()];
+    reader.next_frame(&mut buf).unwrap();
+
+    let icon = Surface::from_data(
+        &mut buf,
+        info.width,
+        info.height,
+        info.line_size as u32,
+        PixelFormatEnum::RGBA32,
+    )
+    .unwrap();
+
+    window.set_icon(icon);
 }
