@@ -83,7 +83,6 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn vram_access() {
         let hash = run_for_frames_and_return_hash(
             include_bytes!("roms/blargg_ppu_tests/vram_access.nes"),

@@ -596,11 +596,12 @@ impl Ppu {
             0x2007 => {
                 // PPUDATA $2007 dddd dddd
                 let ret = self.vram_buffer;
-                self.vram_buffer = self.read_vram(self.v);
+                self.vram_buffer = self.read_vram(self.v & 0x2FFF);
+                let pal = self.read_vram(self.v);
                 self.v += self.ppuctrl.vram_increment();
                 self.v &= 0x3FFF;
                 if self.v >= 0x3F00 {
-                    self.vram_buffer
+                    pal
                 } else {
                     ret
                 }
