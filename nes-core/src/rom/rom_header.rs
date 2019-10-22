@@ -10,6 +10,7 @@ pub struct RomHeader {
     pub flags10: u8,
 }
 
+/// https://wiki.nesdev.com/w/index.php/INES
 impl RomHeader {
     pub fn new(data: &[u8]) -> RomHeader {
         assert_eq!(data.len(), 16, "ROM header should have 16 bytes");

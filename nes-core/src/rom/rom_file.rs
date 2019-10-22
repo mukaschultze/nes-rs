@@ -1,3 +1,5 @@
+extern crate bytesize;
+
 use crate::rom::mapper::Mapper;
 use crate::rom::mapper0::Mapper0;
 use crate::rom::rom_header::RomHeader;
@@ -29,6 +31,12 @@ impl RomFile {
 
         buffer.read_exact(pgr_data.as_mut()).unwrap();
         buffer.read_exact(chr_data.as_mut()).unwrap();
+
+        println!(
+            "Loaded ROM with {} of PGR ROM and {} of CHR ROM",
+            bytesize::to_string(pgr_data.len() as u64, true),
+            bytesize::to_string(chr_data.len() as u64, true),
+        );
 
         RomFile {
             header,

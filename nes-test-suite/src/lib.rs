@@ -41,7 +41,6 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn palette_ram() {
         let hash = run_for_frames_and_return_hash(
             include_bytes!("roms/blargg_ppu_tests/palette_ram.nes"),
@@ -63,7 +62,6 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn sprite_ram() {
         let hash = run_for_frames_and_return_hash(
             include_bytes!("roms/blargg_ppu_tests/sprite_ram.nes"),

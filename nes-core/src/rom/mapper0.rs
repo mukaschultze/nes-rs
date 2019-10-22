@@ -13,10 +13,22 @@ pub struct Mapper0 {
 
 impl Mapper0 {
     pub fn new(rom: &mut RomFile) -> Self {
+        assert_eq!(
+            rom.header.chr_rom_size > 1,
+            false,
+            "NROM should have 8KB of CHR ROM or RAM only"
+        );
+
+        let chr_data = if rom.header.chr_rom_size == 0 {
+            vec![0u8; 0x4000].into_boxed_slice() // 8KB of CHR RAM
+        } else {
+            Box::from(rom.chr_data.as_ref()) // 8KB of CHR ROM
+        };
+
         Self {
             header: rom.header,
             pgr_data: Box::from(rom.pgr_data.as_ref()),
-            chr_data: Box::from(rom.chr_data.as_ref()),
+            chr_data,
         }
     }
 
@@ -37,16 +49,24 @@ impl Mapper for Mapper0 {
         }
     }
 
-    fn write_prg(&mut self, addr: u16, value: u8) {}
+    fn write_prg(&mut self, _addr: u16, _value: u8) {}
 
     fn read_chr(&self, addr: u16) -> u8 {
-        match self.header.chr_rom_size {
-            0 => 0,
-            1 => self.chr_data[addr as usize & 0x1FFF],
-            2 => self.chr_data[addr as usize & 0x3FFF],
-            _ => unimplemented!(),
+        match addr {
+            0x0000..=0x1FFF => self.chr_data[addr as usize],
+            _ => unreachable!(),
         }
     }
 
-    fn write_chr(&mut self, addr: u16, value: u8) {}
+    fn write_chr(&mut self, addr: u16, value: u8) {
+        if self.header.chr_rom_size != 0 {
+            println!("CHR RAM not available");
+            return;
+        }
+
+        match addr {
+            0x0000..=0x1FFF => self.chr_data[addr as usize] = value,
+            _ => unreachable!(),
+        };
+    }
 }
