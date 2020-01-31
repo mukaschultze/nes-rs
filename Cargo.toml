@@ -2,6 +2,7 @@
 members = [
     "nes-core",
     "nes-standalone",
+    "nes-web",
     "nes-test-suite",
     "benchmarks"
 ]
@@ -9,3 +10,7 @@ default-members = ["nes-*"]
 
 [profile.dev]
 opt-level = 3
+
+[profile.release]
+# Tell `rustc` to optimize for small code size.
+opt-level = "s"
