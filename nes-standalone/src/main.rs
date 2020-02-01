@@ -33,8 +33,8 @@ const WIDTH: u32 = 256;
 const HEIGHT: u32 = 240;
 
 const KEYMAPS: &[(Keycode, ControllerDataLine)] = &[
-    (Keycode::A, ControllerDataLine::A),
-    (Keycode::S, ControllerDataLine::B),
+    (Keycode::Z, ControllerDataLine::A),
+    (Keycode::X, ControllerDataLine::B),
     (Keycode::Return, ControllerDataLine::SELECT),
     (Keycode::Space, ControllerDataLine::START),
     (Keycode::Up, ControllerDataLine::UP),

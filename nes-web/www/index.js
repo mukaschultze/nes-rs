@@ -6,8 +6,8 @@ const canvas = document.getElementById("canvas");
 const canvasContext = canvas.getContext("2d");
 
 const KEYMAPS = {
-    "KeyA": 1 << 0, // A,
-    "KeyS": 1 << 1, // B,
+    "KeyZ": 1 << 0, // A,
+    "KeyX": 1 << 1, // B,
     "Enter": 1 << 2, // SELECT,
     "Space": 1 << 3, // START,
     "ArrowUp": 1 << 4, // UP,
