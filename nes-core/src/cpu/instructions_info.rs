@@ -1,5 +1,6 @@
 use crate::cpu::address_mode::AddressMode;
 
+#[derive(Debug)]
 pub struct Instruction {
     pub opcode: u8,
     pub illegal: bool,
