@@ -102,6 +102,7 @@ pub struct Ppu {
     w: bool,
 
     pub output: [u8; 256 * 240], // 256x240 pixels
+    bitmap: [u8; 256 * 240],     // 256x240 pixels
     vram: [u8; 0x1000],          // 2kb // TODO: Implement mirroring and fix the VRAM size
     pub palette_vram: [u8; 32],
     vram_buffer: u8,
@@ -156,6 +157,7 @@ impl Ppu {
             x: 0,
             w: false,
             output: [0; 256 * 240],
+            bitmap: [0; 256 * 240],
             vram: [0; 0x1000],
             palette_vram: [0; 32],
             vram_buffer: 0,
@@ -333,6 +335,7 @@ impl Ppu {
         };
 
         self.output[(y_pos * 256 + x_pos) as usize] = color;
+        self.bitmap[(y_pos * 256 + x_pos) as usize] = pixel as u8;
 
         self.lo_at_reg >>= 1;
         self.hi_at_reg >>= 1;
@@ -365,11 +368,10 @@ impl Ppu {
                         // At x=0 to x=7 if the left-side clipping window is enabled (if bit 2 or bit 1 of PPUMASK is 0).
                         !((x_pos == 0 || x_pos == 7) && (!self.ppumask.contains(PPUMASK::BACKGROUND_LEFTMOST_COLUMN) || !self.ppumask.contains(PPUMASK::SPRITE_LEFTMOST_COLUMN))) &&
                         x_pos != 255 && // At x=255, for an obscure reason related to the pixel pipeline.
-                        color & 0x03 != 0x00 && // Sprite non-transparent
+                        pattern != 0x00 && // Sprite non-transparent
 
                         // TODO: Use mux to check if sprite is transparent
-                        // !This check is incorrect, & 0x03 should be checked against the bitmap
-                        self.output[(y_pos * 256 + x_pos) as usize] & 0x03 != 0x00
+                        self.bitmap[(y_pos * 256 + x_pos) as usize] & 0x03 != 0x00
                     {
                         self.ppustatus.set(PPUSTATUS::SPRITE_0_HIT, true);
                     }
@@ -377,10 +379,9 @@ impl Ppu {
                     let priority = self.sprite_at[i] & 0x20; // 0: in front of background; 1: behind background
 
                     // TODO: Use mux to check if sprite is transparent
-                    if priority == 0
-                        || self.output[(y_pos * 256 + x_pos) as usize] == self.palette_vram[0]
-                    {
+                    if priority == 0 || self.bitmap[(y_pos * 256 + x_pos) as usize] & 0x03 == 0x00 {
                         self.output[(y_pos * 256 + x_pos) as usize] = color;
+                        self.bitmap[(y_pos * 256 + x_pos) as usize] = pattern as u8;
                     }
                 }
             }
@@ -435,6 +436,7 @@ impl Ppu {
         if !rendering_enabled && visible_scanline && render_cycle {
             // Background color
             self.output[(y_pos * 256 + x_pos) as usize] = self.read_vram(0x3F00);
+            self.bitmap[(y_pos * 256 + x_pos) as usize] = 0x00;
         }
 
         if rendering_enabled {
