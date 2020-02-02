@@ -7,6 +7,13 @@ use std::rc::Rc;
 
 const RAM_SIZE: usize = 0x0800;
 
+fn repeat_every<T>(n: T, start: T, repeat: T) -> T
+where
+    T: std::ops::Sub<Output = T> + std::ops::Rem<Output = T> + std::ops::Add<Output = T> + Copy,
+{
+    ((n - start) % repeat) + start
+}
+
 pub struct DataBus {
     ram: [u8; RAM_SIZE],
     pub mapper: Option<Rc<RefCell<Box<dyn Mapper>>>>,
@@ -42,7 +49,7 @@ impl DataBus {
                 .as_ref()
                 .unwrap()
                 .borrow_mut()
-                .read_register_cpu_address(address),
+                .read_register_cpu_address(repeat_every(address, 0x2000, 8)),
             0x4014 => 0, // OAMDMA $4014 is write only!
             0x4016 => {
                 if let Some(controller) = self.controller0.as_mut() {
@@ -59,8 +66,7 @@ impl DataBus {
                 }
             }
             0x4000..=0x401F => 0, // APU and IO registers
-            0x4020..=0x5FFF => 0,
-            0x6000..=0xFFFF => {
+            0x4020..=0xFFFF => {
                 if let Some(mapper) = self.mapper.as_mut() {
                     mapper.borrow_mut().read_prg(address)
                 } else {
@@ -80,7 +86,7 @@ impl DataBus {
                 .as_ref()
                 .unwrap()
                 .borrow_mut()
-                .write_register_cpu_address(address, value),
+                .write_register_cpu_address(repeat_every(address, 0x2000, 8), value),
             0x4014 => {
                 for i in 0..=255 {
                     let v = self.read(((value as u16) << 8) + i as u16);
@@ -100,8 +106,7 @@ impl DataBus {
                 }
             }
             0x4000..=0x401F => {} // APU and IO registers
-            0x4020..=0x5FFF => {}
-            0x6000..=0xFFFF => {
+            0x4020..=0xFFFF => {
                 if let Some(mapper) = self.mapper.as_mut() {
                     mapper.borrow_mut().write_prg(address, value);
                 }
