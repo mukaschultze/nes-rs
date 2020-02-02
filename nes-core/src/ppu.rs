@@ -141,7 +141,7 @@ pub struct Ppu {
 
     cpu: Rc<RefCell<CPU6502>>,
 
-    pub mapper: Option<Rc<RefCell<dyn Mapper>>>,
+    pub mapper: Option<Rc<RefCell<Box<dyn Mapper>>>>,
     pub v_blank_callback: Box<dyn FnMut()>,
 }
 

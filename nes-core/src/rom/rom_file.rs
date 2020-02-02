@@ -53,9 +53,9 @@ impl RomFile {
         Self::new(&mut File::open(&path).unwrap())
     }
 
-    pub fn get_mapper(&mut self) -> impl Mapper {
+    pub fn get_mapper(&mut self) -> Box<dyn Mapper> {
         match self.header.get_mapper_id() {
-            0 => Mapper0::new(self),
+            0 => Box::new(Mapper0::new(self)) as Box<dyn Mapper>,
             id => panic!("Mapper {} not implemented", id),
         }
     }

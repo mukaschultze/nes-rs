@@ -9,7 +9,7 @@ const RAM_SIZE: usize = 0x0800;
 
 pub struct DataBus {
     ram: [u8; RAM_SIZE],
-    pub mapper: Option<Rc<RefCell<dyn Mapper>>>,
+    pub mapper: Option<Rc<RefCell<Box<dyn Mapper>>>>,
     pub ppu: Option<Rc<RefCell<Ppu>>>,
     pub controller0: Option<Controller>,
     pub controller1: Option<Controller>,
