@@ -102,6 +102,8 @@ fn start(rom_path: &Path) -> ! {
 
     nes.reset();
 
+    let mut output_buffer = vec![0; (WIDTH * HEIGHT * 3) as usize];
+
     loop {
         nes.render_full_frame();
 
@@ -141,21 +143,24 @@ fn start(rom_path: &Path) -> ! {
 
         let mut sw = Stopwatch::start_new();
         let clear_color_idx = nes.ppu.borrow().palette_vram[0];
-        let (r, g, b) = palette::get_rgb_color_split(clear_color_idx);
-        canvas.set_draw_color(Color::RGB(r, g, b));
+        let clear_color: Color = palette::get_rgb_color_split(clear_color_idx).into();
+        canvas.set_draw_color(clear_color);
         canvas.clear();
 
-        let output = &nes.ppu.borrow().output;
+        nes.get_output_rgb_u8(&mut output_buffer);
 
+        // TODO: Use frame buffer, migrade from SDL2
         for y in 0..HEIGHT {
             for x in 0..WIDTH {
-                let color_idx = output[(WIDTH * y + x) as usize];
+                let idx = (WIDTH * y + x) as usize * 3;
+                let color = Color::RGB(
+                    output_buffer[idx + 0],
+                    output_buffer[idx + 1],
+                    output_buffer[idx + 2],
+                );
+                let point = Point::new(x as i32, y as i32);
 
-                if color_idx != clear_color_idx {
-                    let (r, g, b) = palette::get_rgb_color_split(color_idx);
-                    let color = Color::RGB(r, g, b);
-                    let point = Point::new(x as i32, y as i32);
-
+                if color.rgb() != clear_color.rgb() {
                     canvas.set_draw_color(color);
                     canvas.draw_point(point).unwrap();
                 }

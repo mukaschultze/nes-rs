@@ -63,19 +63,7 @@ impl NesWebContext {
     }
 
     pub fn set_image_array(&self, to_fill: &mut [u8], width: usize, height: usize) {
-        let output = &self.nes.ppu.borrow().output;
-
-        for y in 0..height {
-            for x in 0..width {
-                let color_idx = output[y * 256 + x];
-                let (r, g, b) = palette::get_rgb_color_split(color_idx);
-                let idx = y * width + x;
-                to_fill[idx * 4 + 0] = r;
-                to_fill[idx * 4 + 1] = g;
-                to_fill[idx * 4 + 2] = b;
-                to_fill[idx * 4 + 3] = 0xFF;
-            }
-        }
+        self.nes.get_output_rgba_u8(to_fill);
     }
 
     pub fn key_down(&mut self, key: u8) {

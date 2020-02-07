@@ -83,27 +83,67 @@ impl NesConsole {
         }
     }
 
+    pub fn get_output_rgba_u8(&self, buf: &mut [u8]) {
+        let output = self.ppu.borrow().output;
+
+        let width = 256;
+        let height = 240;
+
+        for i in 0..width * height {
+            let color_idx = output[i];
+            let (r, g, b) = palette::get_rgb_color_split(color_idx);
+            buf[i * 4 + 0] = r;
+            buf[i * 4 + 1] = g;
+            buf[i * 4 + 2] = b;
+            buf[i * 4 + 3] = 0xFF;
+        }
+    }
+
+    pub fn get_output_rgb_u8(&self, buf: &mut [u8]) {
+        let output = self.ppu.borrow().output;
+
+        let width = 256;
+        let height = 240;
+
+        for i in 0..width * height {
+            let color_idx = output[i];
+            let (r, g, b) = palette::get_rgb_color_split(color_idx);
+            buf[i * 3 + 0] = r;
+            buf[i * 3 + 1] = g;
+            buf[i * 3 + 2] = b;
+        }
+    }
+
+    pub fn get_output_rgba_u32(&self, buf: &mut [u32]) {
+        let output = self.ppu.borrow().output;
+
+        let width = 256;
+        let height = 240;
+
+        for i in 0..width * height {
+            let color_idx = output[i];
+            let color = palette::get_rgb_color(color_idx);
+            buf[i] = color | 0xFF000000;
+        }
+    }
+
     pub fn screenshot(&self, path: &str) {
+        let width = 256;
+        let height = 240;
+
         let file = File::create(Path::new(path)).unwrap();
         let ref mut w = BufWriter::new(file);
-        let mut encoder = png::Encoder::new(w, 256, 240);
+        let mut encoder = png::Encoder::new(w, width, height);
 
         encoder.set_color(png::ColorType::RGB);
         encoder.set_depth(png::BitDepth::Eight);
         encoder.set_compression(png::Compression::Default);
         encoder.set_filter(png::FilterType::NoFilter);
 
-        let output = self.ppu.borrow().output;
+        let mut data = vec![0u8; (width * height) as usize * 3];
+        self.get_output_rgb_u8(&mut data);
+
         let mut writer = encoder.write_header().unwrap();
-        let mut data = vec![0u8; output.len() * 3];
-
-        for i in 0..output.len() {
-            let (r, g, b) = palette::get_rgb_color_split(output[i]);
-
-            data[i * 3 + 0] = r;
-            data[i * 3 + 1] = g;
-            data[i * 3 + 2] = b;
-        }
         writer.write_image_data(&data).unwrap();
     }
 
