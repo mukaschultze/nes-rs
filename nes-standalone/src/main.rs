@@ -4,43 +4,51 @@ extern crate gl;
 extern crate nes_core;
 extern crate nfd;
 extern crate png;
-extern crate sdl2;
 extern crate stopwatch;
+extern crate winit;
 
 use stopwatch::Stopwatch;
 
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
-use sdl2::pixels::{Color, PixelFormatEnum};
-use sdl2::rect::Point;
-use sdl2::render::Canvas;
-use sdl2::surface::Surface;
-use sdl2::video::Window;
-
 use std::env;
 use std::path::Path;
-use std::process::exit;
+
+use pixels::wgpu::Surface;
+use pixels::wgpu::TextureFormat;
+use pixels::PixelsBuilder;
+use pixels::SurfaceTexture;
+
+use winit::dpi::LogicalSize;
+use winit::event::Event;
+use winit::event::VirtualKeyCode;
+use winit::event::WindowEvent;
+use winit::event_loop::ControlFlow;
+use winit::event_loop::EventLoop;
+use winit::window::Fullscreen;
+use winit::window::Icon;
+use winit::window::WindowBuilder;
+use winit_input_helper::WinitInputHelper;
 
 use nfd::Response;
 
 use nes_core::console::NesConsole;
 use nes_core::controller::Controller;
 use nes_core::controller::ControllerDataLine;
-use nes_core::palette;
 use nes_core::rom::rom_file::RomFile;
 
 const WIDTH: u32 = 256;
 const HEIGHT: u32 = 240;
+const TARGET_FRAMERATE: i64 = 60;
+const HIGH_QUALITY: bool = false;
 
-const KEYMAPS: &[(Keycode, ControllerDataLine)] = &[
-    (Keycode::Z, ControllerDataLine::A),
-    (Keycode::X, ControllerDataLine::B),
-    (Keycode::Return, ControllerDataLine::SELECT),
-    (Keycode::Space, ControllerDataLine::START),
-    (Keycode::Up, ControllerDataLine::UP),
-    (Keycode::Down, ControllerDataLine::DOWN),
-    (Keycode::Left, ControllerDataLine::LEFT),
-    (Keycode::Right, ControllerDataLine::RIGHT),
+const KEYMAPS: &[(VirtualKeyCode, ControllerDataLine)] = &[
+    (VirtualKeyCode::Z, ControllerDataLine::A),
+    (VirtualKeyCode::X, ControllerDataLine::B),
+    (VirtualKeyCode::Return, ControllerDataLine::SELECT),
+    (VirtualKeyCode::Space, ControllerDataLine::START),
+    (VirtualKeyCode::Up, ControllerDataLine::UP),
+    (VirtualKeyCode::Down, ControllerDataLine::DOWN),
+    (VirtualKeyCode::Left, ControllerDataLine::LEFT),
+    (VirtualKeyCode::Right, ControllerDataLine::RIGHT),
 ];
 
 fn main() -> ! {
@@ -61,14 +69,10 @@ fn main() -> ! {
     }
 }
 
-fn start(rom_path: &Path) -> ! {
+fn load_nes(rom_path: &Path) -> NesConsole {
     println!("Loading ROM from {}", rom_path.display());
     let mut rom = RomFile::from_file(rom_path);
     let mut nes = NesConsole::new();
-
-    let mut output_buffer = vec![0; (WIDTH * HEIGHT) as usize];
-    let (mut output_buffer_scaled, scaled_width, scaled_height) =
-        nes_core::xbr::get_buffer_for_size(WIDTH, HEIGHT);
 
     nes.bus.borrow_mut().connect_cartridge(&mut rom);
 
@@ -78,134 +82,147 @@ fn start(rom_path: &Path) -> ! {
         bus.controller0 = Some(controller);
     }
 
-    // http://nercury.github.io/rust/opengl/tutorial/2018/02/08/opengl-in-rust-from-scratch-01-window.html
-    let sdl = sdl2::init().unwrap();
-    let video_subsystem = sdl.video().unwrap();
-    let mut event_pump = sdl.event_pump().unwrap();
-
-    let mut window = video_subsystem
-        .window("NES", scaled_width, scaled_height)
-        .resizable()
-        .opengl()
-        .build()
-        .unwrap();
-
-    set_icon(&mut window);
-
-    let mut canvas: Canvas<Window> = window
-        .into_canvas()
-        .index(find_sdl_gl_driver().unwrap())
-        .present_vsync() // this means the screen cannot render faster than your display rate (usually 60Hz or 144Hz)
-        .accelerated()
-        .build()
-        .unwrap();
-
-    canvas
-        .set_logical_size(scaled_width, scaled_height)
-        .unwrap();
-    gl::load_with(|name| video_subsystem.gl_get_proc_address(name) as *const _);
-    canvas.window().gl_set_context_to_current().unwrap();
-
     nes.reset();
+    nes
+}
 
-    loop {
-        nes.render_full_frame();
+fn start(rom_path: &Path) -> ! {
+    let mut nes = load_nes(rom_path);
 
-        for evt in event_pump.poll_iter() {
-            match evt {
-                Event::Quit { .. } => exit(0),
+    // Generate output buffers
+    let mut output_buffer = vec![0; (WIDTH * HEIGHT) as usize];
+    let (mut output_buffer_scaled, scaled_width, scaled_height) =
+        nes_core::xbr::get_buffer_for_size(WIDTH, HEIGHT);
 
-                Event::KeyDown { keycode, .. } => {
-                    if let Some(controller) = nes.bus.borrow_mut().controller0.as_mut() {
-                        for (src, dst) in KEYMAPS {
-                            if keycode == Some(*src) {
-                                controller.data.insert(*dst);
-                            }
-                        }
+    let (width, height) = if HIGH_QUALITY {
+        (scaled_width, scaled_height)
+    } else {
+        (WIDTH, HEIGHT)
+    };
+
+    let event_loop = EventLoop::new();
+    let mut input = WinitInputHelper::new();
+    let window = {
+        let size = LogicalSize::new(width as f64, height as f64);
+        WindowBuilder::new()
+            .with_title("NES Emulator")
+            .with_inner_size(size)
+            .with_min_inner_size(size)
+            .with_window_icon(Some(get_icon()))
+            .build(&event_loop)
+            .unwrap()
+    };
+
+    let mut pixels = {
+        let surface = Surface::create(&window);
+        let surface_texture = SurfaceTexture::new(width, height, surface);
+
+        PixelsBuilder::new(width, height, surface_texture)
+            .texture_format(TextureFormat::Bgra8UnormSrgb)
+            .build()
+            .unwrap()
+    };
+
+    let mut sw = Stopwatch::start_new();
+    let mut sync = Stopwatch::start_new();
+    let mut frames = 0;
+    let mut rendered_frames = 0;
+
+    event_loop.run(move |event, _, control_flow| {
+        match &event {
+            Event::RedrawRequested { .. } => {
+                rendered_frames += 1;
+                nes.get_output_rgb_u32(&mut output_buffer);
+
+                let src = if HIGH_QUALITY {
+                    nes_core::xbr::apply(&mut output_buffer_scaled, &output_buffer, WIDTH, HEIGHT);
+                    &output_buffer_scaled
+                } else {
+                    &output_buffer
+                };
+
+                unsafe {
+                    let pixels_buf = pixels.get_frame();
+                    std::ptr::copy_nonoverlapping(
+                        src.as_ptr() as *mut u8,
+                        pixels_buf.as_mut_ptr(),
+                        pixels_buf.len(),
+                    );
+                }
+                pixels.render();
+            }
+            Event::WindowEvent { event, .. } => {
+                if let Some(size) = match event {
+                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                        Some(**new_inner_size)
+                    }
+                    WindowEvent::Resized(size) => Some(*size),
+                    _ => None,
+                } {
+                    println!("Resized to {}x{}", size.width, size.height);
+                    pixels.resize(size.width, size.height);
+                }
+            }
+            _ => {}
+        }
+
+        if input.update(event) {
+            if input.key_pressed(VirtualKeyCode::Escape) || input.quit() {
+                *control_flow = ControlFlow::Exit;
+            }
+            if input.key_released(VirtualKeyCode::R) {
+                nes.reset();
+            }
+            if input.key_released(VirtualKeyCode::T) {
+                nes.screenshot("nes_screenshot.png");
+                println!("Screenshot taken");
+            }
+            if input.key_released(VirtualKeyCode::F) {
+                let fs = window.fullscreen();
+                let new_fs = if let Some(_) = fs {
+                    None
+                } else {
+                    Some(Fullscreen::Borderless(window.current_monitor()))
+                };
+
+                window.set_fullscreen(new_fs);
+                println!("Fullscreen changed");
+            }
+
+            if let Some(nes_controller) = nes.bus.borrow_mut().controller0.as_mut() {
+                for (src, dst) in KEYMAPS {
+                    if input.key_pressed(*src) {
+                        nes_controller.data.insert(*dst);
+                    }
+                    if input.key_released(*src) {
+                        nes_controller.data.remove(*dst);
                     }
                 }
-                Event::KeyUp { keycode, .. } => {
-                    if let Some(controller) = nes.bus.borrow_mut().controller0.as_mut() {
-                        for (src, dst) in KEYMAPS {
-                            if keycode == Some(*src) {
-                                controller.data.remove(*dst);
-                            }
-                        }
-                    }
-
-                    match keycode {
-                        Some(Keycode::R) => nes.reset(),
-                        Some(Keycode::T) => nes.screenshot("nes_screenshot.png"),
-                        _ => {}
-                    };
-                }
-
-                // evt => println!("Event received: {:?}", evt),
-                _ => {}
             }
         }
 
-        let mut sw = Stopwatch::start_new();
-        let clear_color_idx = nes.ppu.borrow().palette_vram[0];
-        let clear_color: Color = palette::get_rgb_color_split(clear_color_idx).into();
-        canvas.set_draw_color(clear_color);
-        canvas.clear();
-
-        nes.get_output_rgb_u32(&mut output_buffer);
-        nes_core::xbr::apply(&mut output_buffer_scaled, &output_buffer, WIDTH, HEIGHT);
-
-        // TODO: Use frame buffer, migrade from SDL2
-        for y in 0..scaled_height {
-            for x in 0..scaled_width {
-                let idx = (scaled_width * y + x) as usize;
-                let color = Color::RGB(
-                    ((output_buffer_scaled[idx] >> 16) & 0xFF) as u8,
-                    ((output_buffer_scaled[idx] >> 8) & 0xFF) as u8,
-                    (output_buffer_scaled[idx] & 0xFF) as u8,
-                );
-                let point = Point::new(x as i32, y as i32);
-
-                if color.rgb() != clear_color.rgb() {
-                    canvas.set_draw_color(color);
-                    canvas.draw_point(point).unwrap();
-                }
-            }
+        if sw.elapsed_ms() > 1000 {
+            sw.restart();
+            println!("FPS: {}, rendered {}", frames, rendered_frames);
+            frames = 0;
+            rendered_frames = 0;
         }
 
-        canvas.present();
-        sw.stop();
-        // println!(
-        //     "Rendering took {}ms, {:.2} FPS",
-        //     sw.elapsed_ms(),
-        //     1000f64 / sw.elapsed_ms() as f64
-        // );
-    }
-}
-
-fn find_sdl_gl_driver() -> Option<u32> {
-    for (index, item) in sdl2::render::drivers().enumerate() {
-        if item.name == "opengl" {
-            return Some(index as u32);
+        if sync.elapsed_ms() >= (1000 / TARGET_FRAMERATE) {
+            sync.restart();
+            frames += 1;
+            nes.render_full_frame();
+            window.request_redraw();
         }
-    }
-    None
+    });
 }
 
-fn set_icon(window: &mut Window) {
+fn get_icon() -> Icon {
     const ICON_SRC: &[u8] = include_bytes!("./icon.png");
     let decoder = png::Decoder::new(ICON_SRC);
     let (info, mut reader) = decoder.read_info().unwrap();
     let mut buf = vec![0; info.buffer_size()];
     reader.next_frame(&mut buf).unwrap();
 
-    let icon = Surface::from_data(
-        &mut buf,
-        info.width,
-        info.height,
-        info.line_size as u32,
-        PixelFormatEnum::RGBA32,
-    )
-    .unwrap();
-
-    window.set_icon(icon);
+    Icon::from_rgba(buf, info.width, info.height).unwrap()
 }

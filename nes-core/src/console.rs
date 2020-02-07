@@ -123,7 +123,12 @@ impl NesConsole {
         for i in 0..width * height {
             let color_idx = output[i];
             let color = palette::get_rgb_color(color_idx);
-            buf[i] = color;
+            // 0xFF000000 = ALPHA
+            // 0x00FF0000 = BLUE
+            // 0x0000FF00 = GREEN
+            // 0x000000FF = RED
+
+            buf[i] = color | 0xFF000000;
         }
     }
 
