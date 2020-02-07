@@ -26,10 +26,11 @@ matrix:
   fast_finish: true
   include:
     - stage: lint
+      rust: stable
       before_install: 
         - rustup component add clippy
         - rustup component add rustfmt
-      script: cargo fmt -- --check 
+      script: cargo fmt -- --check
     - stage: nes-web
       before_install:
         - curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
