@@ -38,6 +38,7 @@ matrix:
         - sudo apt install nodejs
       before_script:
         - cd nes-web/www
+        - cargo install wasm-pack --version 0.8.1
         - npm install
       script:
         - npm run build-wasm
