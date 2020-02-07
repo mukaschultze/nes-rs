@@ -36,11 +36,11 @@ matrix:
       install:
         - sudo apt install nodejs
       before_script:
-        - "cd nes-web/www && npm install"
+        - cd nes-web/www
+        - npm install
       script:
-        - pwd
-        - cd nes-web/www && npm run build-wasm
-        - cd nes-web/www && npm run build
+        - npm run build-wasm
+        - npm run build
 
 cache: cargo
 before_cache:
