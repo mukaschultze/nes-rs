@@ -57,7 +57,7 @@ deploy:
   github_token: $GITHUB_TOKEN  # Set in the settings page of your repository, as a secure variable
   keep_history: false
   on:
-    condition: -d $TRAVIS_BUILD_DIR/nes-web/www/dist/
+    condition: $TRAVIS_BUILD_STAGE_NAME = nes-web
     branch: master
     
 notifications:
