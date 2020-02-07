@@ -34,10 +34,10 @@ matrix:
       before_install:
         - curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
         - sudo apt install nodejs
-      install: "npm install"
+      install: "cd nes-web/www && npm install"
       script:
-        - npm run build-wasm
-        - npm run build
+        - cd nes-web/www && npm run build-wasm
+        - cd nes-web/www && npm run build
 
 cache: cargo
 before_cache:
