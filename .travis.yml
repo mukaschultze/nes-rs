@@ -34,8 +34,6 @@ jobs:
       - rustup component add rustfmt
     script: cargo fmt -- --check 
   - stage: nes-web
-    env: 
-      - NES_WEB=true RELEASE_BUILD=--release
     before_install:
       - curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
       - sudo apt install nodejs
@@ -57,7 +55,7 @@ deploy:
   github_token: $GITHUB_TOKEN  # Set in the settings page of your repository, as a secure variable
   keep_history: false
   on:
-    condition: NES_WEB
+    condition: -d nes-web/www/dist/
     branch: master
     
 notifications:
