@@ -43,7 +43,6 @@ matrix:
         - cd www
         - npm install
         - npm run build
-        - echo $TRAVIS_BUILD_STAGE_NAME
 
 cache: cargo
 before_cache:
@@ -58,7 +57,7 @@ deploy:
   github_token: $GITHUB_TOKEN  # Set in the settings page of your repository, as a secure variable
   keep_history: false
   on:
-    condition: $TRAVIS_BUILD_STAGE_NAME = nes-web
+    condition: "$TRAVIS_BUILD_STAGE_NAME = Nes-web"
     branch: master
     
 notifications:
