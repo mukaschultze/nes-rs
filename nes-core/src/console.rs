@@ -114,7 +114,7 @@ impl NesConsole {
         }
     }
 
-    pub fn get_output_rgba_u32(&self, buf: &mut [u32]) {
+    pub fn get_output_rgb_u32(&self, buf: &mut [u32]) {
         let output = self.ppu.borrow().output;
 
         let width = 256;
@@ -123,7 +123,7 @@ impl NesConsole {
         for i in 0..width * height {
             let color_idx = output[i];
             let color = palette::get_rgb_color(color_idx);
-            buf[i] = color | 0xFF000000;
+            buf[i] = color;
         }
     }
 

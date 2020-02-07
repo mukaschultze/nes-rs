@@ -66,6 +66,10 @@ fn start(rom_path: &Path) -> ! {
     let mut rom = RomFile::from_file(rom_path);
     let mut nes = NesConsole::new();
 
+    let mut output_buffer = vec![0; (WIDTH * HEIGHT) as usize];
+    let (mut output_buffer_scaled, scaled_width, scaled_height) =
+        nes_core::xbr::get_buffer_for_size(WIDTH, HEIGHT);
+
     nes.bus.borrow_mut().connect_cartridge(&mut rom);
 
     {
@@ -80,7 +84,7 @@ fn start(rom_path: &Path) -> ! {
     let mut event_pump = sdl.event_pump().unwrap();
 
     let mut window = video_subsystem
-        .window("NES", WIDTH, HEIGHT)
+        .window("NES", scaled_width, scaled_height)
         .resizable()
         .opengl()
         .build()
@@ -96,13 +100,13 @@ fn start(rom_path: &Path) -> ! {
         .build()
         .unwrap();
 
-    canvas.set_logical_size(WIDTH, HEIGHT).unwrap();
+    canvas
+        .set_logical_size(scaled_width, scaled_height)
+        .unwrap();
     gl::load_with(|name| video_subsystem.gl_get_proc_address(name) as *const _);
     canvas.window().gl_set_context_to_current().unwrap();
 
     nes.reset();
-
-    let mut output_buffer = vec![0; (WIDTH * HEIGHT * 3) as usize];
 
     loop {
         nes.render_full_frame();
@@ -147,16 +151,17 @@ fn start(rom_path: &Path) -> ! {
         canvas.set_draw_color(clear_color);
         canvas.clear();
 
-        nes.get_output_rgb_u8(&mut output_buffer);
+        nes.get_output_rgb_u32(&mut output_buffer);
+        nes_core::xbr::apply(&mut output_buffer_scaled, &output_buffer, WIDTH, HEIGHT);
 
         // TODO: Use frame buffer, migrade from SDL2
-        for y in 0..HEIGHT {
-            for x in 0..WIDTH {
-                let idx = (WIDTH * y + x) as usize * 3;
+        for y in 0..scaled_height {
+            for x in 0..scaled_width {
+                let idx = (scaled_width * y + x) as usize;
                 let color = Color::RGB(
-                    output_buffer[idx + 0],
-                    output_buffer[idx + 1],
-                    output_buffer[idx + 2],
+                    ((output_buffer_scaled[idx] >> 16) & 0xFF) as u8,
+                    ((output_buffer_scaled[idx] >> 8) & 0xFF) as u8,
+                    (output_buffer_scaled[idx] & 0xFF) as u8,
                 );
                 let point = Point::new(x as i32, y as i32);
 

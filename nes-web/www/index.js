@@ -1,5 +1,7 @@
 import * as nes from "nes-web";
 
+let upscale = true;
+
 const context = nes.init();
 
 const canvas = document.getElementById("canvas");
@@ -23,15 +25,31 @@ document.addEventListener("keydown", (evt) => {
 document.addEventListener("keyup", (evt) => {
     if (KEYMAPS[evt.code])
         context.key_up(KEYMAPS[evt.code])
+    if (evt.code === "KeyQ")
+        upscale = !upscale;
 });
 
+let frames = 0;
+let fpsLog = 2000;
+
+setInterval(() => { console.log(`${frames / (fpsLog / 1000)} FPS`); frames = 0; }, fpsLog);
+
 const renderLoop = () => {
-    context.nes_frame();
+    frames++;
     requestAnimationFrame(renderLoop);
+
+    canvas.width = upscale ? 512 : 256;
+    canvas.height = upscale ? 480 : 240;
+
+    context.nes_frame();
 
     const imageData = canvasContext.getImageData(0, 0, canvas.width, canvas.height);
 
-    context.set_image_array(imageData.data, canvas.width, canvas.height);
+    if (upscale)
+        context.set_image_array_upscale(imageData.data);
+    else
+        context.set_image_array(imageData.data);
+
     canvasContext.putImageData(imageData, 0, 0);
 };
 

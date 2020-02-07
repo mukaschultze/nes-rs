@@ -11,6 +11,7 @@ pub mod cpu;
 pub mod palette;
 pub mod ppu;
 pub mod rom;
+pub mod xbr;
 
 #[cfg(test)]
 mod test;
