@@ -9,7 +9,7 @@ use std::path::Path;
 use std::u16;
 
 const LOG_FILE: &str = include_str!("../test/nestest.log"); // "../test/nestest.full.log"
-const LOG_REGEX_PATTERN : &str = r"([0-9A-F]{4})  ([0-9A-F]{2}) ([0-9A-F]{2}|\s{2}) ([0-9A-F]{2}|\s{2}) [ \*].{32}A:([0-9A-F]{2}) X:([0-9A-F]{2}) Y:([0-9A-F]{2}) P:([0-9A-F]{2}) SP:([0-9A-F]{2}) PPU:\s*(\d*),\s*(\d*) CYC:(\d+)";
+const LOG_REGEX_PATTERN: &str = r"([0-9A-F]{4})  ([0-9A-F]{2}) ([0-9A-F]{2}|\s{2}) ([0-9A-F]{2}|\s{2}) [ \*].{32}A:([0-9A-F]{2}) X:([0-9A-F]{2}) Y:([0-9A-F]{2}) P:([0-9A-F]{2}) SP:([0-9A-F]{2}) PPU:\s*(\d*),\s*(\d*) CYC:(\d+)";
 const ROM_NESTEST: &[u8] = include_bytes!("../test/nestest.nes");
 
 fn nes_with_rom(rom_bytes: &[u8], start_addr: u16) -> NesConsole {
