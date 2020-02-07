@@ -43,6 +43,7 @@ matrix:
         - cd www
         - npm install
         - npm run build
+        - echo $TRAVIS_BUILD_STAGE_NAME
 
 cache: cargo
 before_cache:
