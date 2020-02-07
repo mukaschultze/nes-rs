@@ -33,12 +33,33 @@ jobs:
       - rustup component add clippy
       - rustup component add rustfmt
     script: cargo fmt -- --check 
+  - stage: nes-web
+    env: 
+      - NES_WEB=true RELEASE_BUILD=--release
+    before_install:
+      - curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+      - sudo apt install nodejs
+    install: "npm install"
+    script:
+      - npm run build-wasm
+      - npm run build
 
 cache: cargo
 before_cache:
   # Travis can't cache files that are not readable by "others"
   - chmod -R a+r $HOME/.cargo
 
+deploy:
+  local_dir: "nes-web/www/dist/"
+  provider: pages
+  target_branch: "gh-pages"
+  skip_cleanup: true
+  github_token: $GITHUB_TOKEN  # Set in the settings page of your repository, as a secure variable
+  keep_history: false
+  on:
+    condition: NES_WEB
+    branch: master
+    
 notifications:
   email:
     on_success: never
