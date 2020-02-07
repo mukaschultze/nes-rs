@@ -33,9 +33,12 @@ matrix:
     - stage: nes-web
       before_install:
         - curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+      install:
         - sudo apt install nodejs
-      install: "cd nes-web/www && npm install"
+      before_script:
+        - "cd nes-web/www && npm install"
       script:
+        - pwd
         - cd nes-web/www && npm run build-wasm
         - cd nes-web/www && npm run build
 
