@@ -2,7 +2,6 @@
 # https://github.com/japaric/trust/tree/v0.1.2
 
 language: rust
-sudo: required
 
 rust:
   - stable
@@ -17,30 +16,28 @@ before_install:
   - sudo apt update && sudo apt install -y libgl1-mesa-dev cmake libsdl2-dev libgtk-3-dev
   - rustup self update
 
-matrix:
-  allow_failures:
-    - rust: nightly
-  fast_finish: true
-
 script:
   - cargo build $RELEASE_BUILD --verbose
   - cargo test $RELEASE_BUILD --verbose
 
-jobs:
+matrix:
+  allow_failures:
+    - rust: nightly
+  fast_finish: true
   include:
-  - stage: lint
-    before_install: 
-      - rustup component add clippy
-      - rustup component add rustfmt
-    script: cargo fmt -- --check 
-  - stage: nes-web
-    before_install:
-      - curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
-      - sudo apt install nodejs
-    install: "npm install"
-    script:
-      - npm run build-wasm
-      - npm run build
+    - stage: lint
+      before_install: 
+        - rustup component add clippy
+        - rustup component add rustfmt
+      script: cargo fmt -- --check 
+    - stage: nes-web
+      before_install:
+        - curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+        - sudo apt install nodejs
+      install: "npm install"
+      script:
+        - npm run build-wasm
+        - npm run build
 
 cache: cargo
 before_cache:
