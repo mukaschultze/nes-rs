@@ -36,9 +36,9 @@ matrix:
         - curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
       install:
         - sudo apt install nodejs
+        - cargo install wasm-pack --version 0.8.1
       before_script:
         - cd nes-web/www
-        - cargo install wasm-pack --version 0.8.1
         - npm install
       script:
         - npm run build-wasm
