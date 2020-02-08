@@ -1,6 +1,6 @@
 import * as nes from "nes-web";
 
-let upscale = true;
+let upscale = false;
 
 const context = nes.init();
 
