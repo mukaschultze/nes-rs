@@ -43,7 +43,7 @@ impl PPUCTRL {
     }
 
     fn sprite_height(self) -> u8 {
-        8 << (self & Self::SPRITE_HEIGHT).bits()
+        8 << ((self & Self::SPRITE_HEIGHT).bits() >> 5)
     }
 }
 
