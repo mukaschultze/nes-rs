@@ -14,6 +14,7 @@ use wasm_bindgen::prelude::*;
 use nes_core::console::NesConsole;
 use nes_core::controller::Controller;
 use nes_core::controller::ControllerDataLine;
+use nes_core::palette;
 use nes_core::rom::rom_file::RomFile;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -86,6 +87,15 @@ impl NesWebContext {
             to_fill[i * 4 + 2] = (self.output_buffer_scaled[i] & 0xFF) as u8;
             to_fill[i * 4 + 3] = 0xFF;
         }
+    }
+
+    pub fn get_background_color(&self) -> String {
+        let ppu = self.nes.ppu.borrow();
+        let color_idx = ppu.palette_vram[0];
+
+        let (r, g, b) = palette::get_rgb_color_split(color_idx);
+
+        format!("#{:02X}{:02X}{:02X}", r, g, b)
     }
 
     pub fn key_down(&mut self, key: u8) {

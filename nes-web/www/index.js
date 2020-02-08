@@ -5,6 +5,7 @@ let upscale = false;
 const context = nes.init();
 
 const canvas = document.getElementById("canvas");
+const background = document.getElementById("background");
 const canvasContext = canvas.getContext("2d");
 
 const KEYMAPS = {
@@ -51,6 +52,7 @@ const renderLoop = () => {
         context.set_image_array(imageData.data);
 
     canvasContext.putImageData(imageData, 0, 0);
+    background.style.backgroundColor = context.get_background_color();
 };
 
 requestAnimationFrame(renderLoop);
