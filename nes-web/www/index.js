@@ -8,15 +8,26 @@ const canvas = document.getElementById("canvas");
 const background = document.getElementById("background");
 const canvasContext = canvas.getContext("2d");
 
+const ControllerInput = {
+  A: 1 << 0,
+  B: 1 << 1,
+  SELECT: 1 << 2,
+  START: 1 << 3,
+  UP: 1 << 4,
+  DOWN: 1 << 5,
+  LEFT: 1 << 6,
+  RIGHT: 1 << 7,
+};
+
 const KEYMAPS = {
-  KeyZ: 1 << 0, // A,
-  KeyX: 1 << 1, // B,
-  Enter: 1 << 2, // SELECT,
-  Space: 1 << 3, // START,
-  ArrowUp: 1 << 4, // UP,
-  ArrowDown: 1 << 5, // DOWN,
-  ArrowLeft: 1 << 6, // LEFT,
-  ArrowRight: 1 << 7, // RIGHT,
+  KeyZ: ControllerInput.A,
+  KeyX: ControllerInput.B,
+  Enter: ControllerInput.SELECT,
+  Space: ControllerInput.START,
+  ArrowUp: ControllerInput.UP,
+  ArrowDown: ControllerInput.DOWN,
+  ArrowLeft: ControllerInput.LEFT,
+  ArrowRight: ControllerInput.RIGHT,
 };
 
 document.addEventListener("keydown", (evt) => {
