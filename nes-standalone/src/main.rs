@@ -114,8 +114,7 @@ fn start(rom_path: &Path) -> ! {
     };
 
     let mut pixels = {
-        let surface = Surface::create(&window);
-        let surface_texture = SurfaceTexture::new(width, height, surface);
+        let surface_texture = SurfaceTexture::new(width, height, &window);
 
         PixelsBuilder::new(width, height, surface_texture)
             .texture_format(TextureFormat::Bgra8UnormSrgb)
@@ -160,13 +159,13 @@ fn start(rom_path: &Path) -> ! {
                     _ => None,
                 } {
                     println!("Resized to {}x{}", size.width, size.height);
-                    pixels.resize(size.width, size.height);
+                    pixels.resize_surface(size.width, size.height);
                 }
             }
             _ => {}
         }
 
-        if input.update(event) {
+        if input.update(&event) {
             if input.key_pressed(VirtualKeyCode::Escape) || input.quit() {
                 *control_flow = ControlFlow::Exit;
             }

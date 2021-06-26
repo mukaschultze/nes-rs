@@ -6,7 +6,7 @@ use crate::cpu::CPU6502;
 use crate::palette;
 use crate::ppu::Ppu;
 
-use gif::{Encoder, Frame, Repeat, SetParameter};
+use gif::{Encoder, Frame, Repeat};
 
 use std::borrow::Cow;
 use std::cell::RefCell;
@@ -157,7 +157,7 @@ impl NesConsole {
         let color_map = palette::get_full_palette_split();
         let image = File::create(path).unwrap();
         let mut encoder = Encoder::new(image, width, height, color_map).unwrap();
-        encoder.set(Repeat::Infinite).unwrap();
+        encoder.set_repeat(Repeat::Infinite).unwrap();
         encoder
     }
 

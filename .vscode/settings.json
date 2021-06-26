@@ -1,4 +1,21 @@
 {
     "files.insertFinalNewline": true,
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "workbench.colorCustomizations": {
+        "activityBar.activeBackground": "#0c67ce",
+        "activityBar.activeBorder": "#78073c",
+        "activityBar.background": "#0c67ce",
+        "activityBar.foreground": "#e7e7e7",
+        "activityBar.inactiveForeground": "#e7e7e799",
+        "activityBarBadge.background": "#78073c",
+        "activityBarBadge.foreground": "#e7e7e7",
+        "statusBar.background": "#094f9e",
+        "statusBar.foreground": "#e7e7e7",
+        "statusBarItem.hoverBackground": "#0c67ce",
+        "titleBar.activeBackground": "#094f9e",
+        "titleBar.activeForeground": "#e7e7e7",
+        "titleBar.inactiveBackground": "#094f9e99",
+        "titleBar.inactiveForeground": "#e7e7e799"
+    },
+    "peacock.color": "#094f9e"
 }
