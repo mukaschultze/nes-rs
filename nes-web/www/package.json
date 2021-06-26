@@ -1,5 +1,5 @@
 {
-  "name": "nes-web",
+  "name": "nes-www",
   "version": "0.1.0",
   "description": "NES emulator running using Web Assembly",
   "main": "index.js",
@@ -26,10 +26,10 @@
   },
   "homepage": "https://github.com/mukaschultze/nes-rs#readme",
   "devDependencies": {
-    "copy-webpack-plugin": "^5.0.0",
-    "webpack": "^4.29.3",
-    "webpack-cli": "^3.1.0",
-    "webpack-dev-server": "^3.1.5"
+    "copy-webpack-plugin": "^9.0.1",
+    "webpack": "^5.40.0",
+    "webpack-cli": "^4.7.2",
+    "webpack-dev-server": "^3.11.2"
   },
   "dependencies": {
     "nes-web": "file:../pkg"
