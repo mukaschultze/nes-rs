@@ -1,4 +1,4 @@
-import * as nes from "nes-web";
+import * as nes from "nes-wasm";
 
 function bytesToSize(bytes) {
   var sizes = ["Bytes", "KB", "MB", "GB", "TB"];

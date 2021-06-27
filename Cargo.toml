@@ -2,7 +2,7 @@
 members = [
     "nes-core",
     "nes-standalone",
-    "nes-web",
+    "nes-wasm",
     "nes-test-suite",
     "benchmarks"
 ]

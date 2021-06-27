@@ -27,18 +27,18 @@ matrix:
   include:
     - stage: lint
       rust: stable
-      before_install: 
+      before_install:
         - rustup component add clippy
         - rustup component add rustfmt
       script: cargo fmt -- --check
-    - stage: nes-web
+    - stage: nes-wasm
       before_install:
         - curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
       install:
         - sudo apt install nodejs
-        - cargo install wasm-pack --version 0.8.1
+        - cargo install wasm-pack
       script:
-        - cd nes-web
+        - cd nes-wasm
         - wasm-pack build --release
         - cd www
         - npm install
@@ -50,16 +50,16 @@ before_cache:
   - chmod -R a+r $HOME/.cargo
 
 deploy:
-  local_dir: "nes-web/www/dist/"
+  local_dir: "nes-wasm/www/dist/"
   provider: pages
   target_branch: "gh-pages"
   skip_cleanup: true
-  github_token: $GITHUB_TOKEN  # Set in the settings page of your repository, as a secure variable
+  github_token: $GITHUB_TOKEN # Set in the settings page of your repository, as a secure variable
   keep_history: false
   on:
     condition: "$TRAVIS_BUILD_STAGE_NAME = Nes-web"
     branch: master
-    
+
 notifications:
   email:
     on_success: never

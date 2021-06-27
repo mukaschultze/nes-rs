@@ -1,5 +1,5 @@
 [package]
-name = "nes-web"
+name = "nes-wasm"
 version = "0.1.0"
 authors = ["Muka Schultze <samuelschultze@gmail.com>"]
 edition = "2018"
