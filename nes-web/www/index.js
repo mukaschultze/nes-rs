@@ -22,6 +22,7 @@ setInterval(logMemoryChange, 5000);
 
 const canvas = document.getElementById("canvas");
 const background = document.getElementById("background");
+const romInput = document.getElementById("rom");
 
 const KEYMAPS = {
   KeyZ: nes.ControllerKeys.A,
@@ -88,7 +89,15 @@ const context = nes.init();
 context.setup_canvas(canvas);
 context.attach_joypad(0);
 context.attach_zapper_gun(1);
-context.reset();
+
+romInput.addEventListener("input", async (evt) => {
+  const file = evt.target.files[0];
+  const buffer = await file.arrayBuffer();
+  const arr = new Uint8Array(buffer);
+  context.inser_cartridge(arr);
+  context.reset();
+  console.log(`${file.name} loaded`);
+});
 
 console.log("Input 0:", context.get_input_type(0));
 console.log("Input 1:", context.get_input_type(1));

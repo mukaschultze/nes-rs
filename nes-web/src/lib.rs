@@ -59,18 +59,9 @@ extern "C" {
 #[wasm_bindgen]
 pub fn init() -> NesWebContext {
     utils::set_panic_hook();
-
-    // println!("Loading ROM from {}", rom_path.display());
-    // let mut rom = RomFile::from_file(rom_path);
-    // let mut rom = RomFile::from_bytes(include_bytes!("../../roms/Duck Hunt (JUE) [p1].nes"));
-    let mut rom = RomFile::from_bytes(include_bytes!("../../roms/Super Mario Bros (E).nes"));
-    // let mut rom = RomFile::from_bytes(include_bytes!("../../roms/zapper/zapper_light.nes"));
-    // let mut rom = RomFile::from_bytes(include_bytes!("../../roms/Donkey Kong (World) (Rev A).nes"));
-    let nes = NesConsole::new();
-
-    nes.bus.borrow_mut().connect_cartridge(&mut rom);
-
-    NesWebContext { nes }
+    NesWebContext {
+        nes: NesConsole::new(),
+    }
 }
 
 #[wasm_bindgen]
@@ -81,6 +72,12 @@ impl NesWebContext {
 
     pub fn reset(&mut self) {
         self.nes.reset();
+    }
+
+    pub fn inser_cartridge(&mut self, rom_bytes: Vec<u8>) {
+        let rom = RomFile::from_bytes(&rom_bytes);
+
+        self.nes.bus.borrow_mut().connect_cartridge(rom);
     }
 
     pub fn attach_joypad(&mut self, input: u8) {

@@ -34,7 +34,7 @@ impl DataBus {
         }
     }
 
-    pub fn connect_cartridge(&mut self, rom: &mut RomFile) {
+    pub fn connect_cartridge(&mut self, mut rom: RomFile) {
         let b = Rc::new(RefCell::new(rom.get_mapper()));
         self.mapper = Some(b.clone());
         self.ppu.as_mut().unwrap().borrow_mut().mapper = Some(b.clone());

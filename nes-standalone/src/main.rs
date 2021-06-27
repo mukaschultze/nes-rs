@@ -72,10 +72,10 @@ fn main() -> ! {
 
 fn load_nes(rom_path: &Path) -> NesConsole {
     println!("Loading ROM from {}", rom_path.display());
-    let mut rom = RomFile::from_file(rom_path);
+    let rom = RomFile::from_file(rom_path);
     let mut nes = NesConsole::new();
 
-    nes.bus.borrow_mut().connect_cartridge(&mut rom);
+    nes.bus.borrow_mut().connect_cartridge(rom);
 
     {
         let mut bus = nes.bus.borrow_mut();
