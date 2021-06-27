@@ -1,12 +1,29 @@
 import * as nes from "nes-web";
 
-let upscale = false;
+function bytesToSize(bytes) {
+  var sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+  if (bytes == 0) return "0 Byte";
+  var i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+  return Math.round(bytes / Math.pow(1024, i), 2) + " " + sizes[i];
+}
+
+let last = window.performance.memory;
+const logMemoryChange = () => {
+  const current = window.performance.memory;
+  const change = current.usedJSHeapSize - last.usedJSHeapSize;
+
+  if (change > 0) console.log(`Allocated ${bytesToSize(change)} of heap`);
+  else console.log(`Freed ${bytesToSize(-change)} of heap`);
+
+  last = current;
+};
+
+setInterval(logMemoryChange, 5000);
 
 const context = nes.init();
 
 const canvas = document.getElementById("canvas");
 const background = document.getElementById("background");
-const canvasContext = canvas.getContext("2d");
 
 const ControllerInput = {
   A: 1 << 0,
@@ -35,7 +52,6 @@ document.addEventListener("keydown", (evt) => {
 });
 document.addEventListener("keyup", (evt) => {
   if (KEYMAPS[evt.code]) context.key_up(KEYMAPS[evt.code]);
-  if (evt.code === "KeyQ") upscale = !upscale;
 });
 
 let frames = 0;
@@ -46,26 +62,13 @@ setInterval(() => {
   frames = 0;
 }, fpsLog);
 
+context.setup_canvas(canvas);
+
 const renderLoop = () => {
   frames++;
   requestAnimationFrame(renderLoop);
 
-  canvas.width = upscale ? 512 : 256;
-  canvas.height = upscale ? 480 : 240;
-
-  context.nes_frame();
-
-  const imageData = canvasContext.getImageData(
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
-
-  if (upscale) context.set_image_array_upscale(imageData.data);
-  else context.set_image_array(imageData.data);
-
-  canvasContext.putImageData(imageData, 0, 0);
+  context.update_canvas(canvas);
   background.style.backgroundColor = context.get_background_color();
 };
 

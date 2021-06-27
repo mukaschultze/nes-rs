@@ -10,6 +10,8 @@ macro_rules! log {
 mod utils;
 
 use wasm_bindgen::prelude::*;
+use wasm_bindgen::Clamped;
+use wasm_bindgen::JsCast;
 
 use nes_core::console::NesConsole;
 use nes_core::controller::Controller;
@@ -26,8 +28,6 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 #[wasm_bindgen]
 pub struct NesWebContext {
     nes: NesConsole,
-    output_buffer: Vec<u32>,
-    output_buffer_scaled: Vec<u32>,
 }
 
 #[wasm_bindgen]
@@ -55,38 +55,13 @@ pub fn init() -> NesWebContext {
 
     nes.reset();
 
-    NesWebContext {
-        nes,
-        output_buffer: vec![0; 256 * 240],
-        output_buffer_scaled: vec![0; 512 * 480],
-    }
+    NesWebContext { nes }
 }
 
 #[wasm_bindgen]
 impl NesWebContext {
     pub fn nes_frame(&mut self) {
         self.nes.render_full_frame();
-    }
-
-    pub fn set_image_array(&self, to_fill: &mut [u8]) {
-        self.nes.get_output_rgba_u8(to_fill);
-    }
-
-    pub fn set_image_array_upscale(&mut self, to_fill: &mut [u8]) {
-        self.nes.get_output_rgb_u32(&mut self.output_buffer[..]);
-        nes_core::xbr::apply(
-            &mut self.output_buffer_scaled,
-            &self.output_buffer,
-            256,
-            240,
-        );
-
-        for i in 0..self.output_buffer_scaled.len() {
-            to_fill[i * 4 + 0] = ((self.output_buffer_scaled[i] >> 16) & 0xFF) as u8;
-            to_fill[i * 4 + 1] = ((self.output_buffer_scaled[i] >> 8) & 0xFF) as u8;
-            to_fill[i * 4 + 2] = (self.output_buffer_scaled[i] & 0xFF) as u8;
-            to_fill[i * 4 + 3] = 0xFF;
-        }
     }
 
     pub fn get_background_color(&self) -> String {
@@ -112,5 +87,35 @@ impl NesWebContext {
                 .data
                 .remove(ControllerDataLine::from_bits(key).unwrap());
         }
+    }
+
+    pub fn setup_canvas(&mut self, canvas: &web_sys::HtmlCanvasElement) {
+        canvas.set_width(256);
+        canvas.set_height(240);
+    }
+
+    pub fn update_canvas(&mut self, canvas: &web_sys::HtmlCanvasElement) -> Result<(), JsValue> {
+        let context = canvas
+            .get_context("2d")?
+            .expect("context 2d to be available")
+            .dyn_into::<web_sys::CanvasRenderingContext2d>()?;
+
+        let width = 256;
+        let height = 240;
+
+        self.nes.render_full_frame();
+
+        let mut output_buffer = vec![0; (256 * 240 * 4) as usize];
+        self.nes.get_output_rgba_u8(&mut output_buffer);
+
+        let image_data = web_sys::ImageData::new_with_u8_clamped_array_and_sh(
+            Clamped(&output_buffer),
+            width,
+            height,
+        )?;
+
+        context.put_image_data(&image_data, 0.0, 0.0)?;
+
+        Ok(())
     }
 }

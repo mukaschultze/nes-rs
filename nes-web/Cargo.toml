@@ -13,7 +13,7 @@ default = ["console_error_panic_hook", "wee_alloc"]
 [dependencies]
 nes-core = { path = "../nes-core" }
 js-sys = "0.3.35"
-wasm-bindgen = "0.2"
+wasm-bindgen = "0.2.74"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
@@ -35,9 +35,7 @@ wasm-bindgen-test = "0.3.24"
 version = "0.3.4"
 features = [
   'CanvasRenderingContext2d',
-  'Document',
-  'Element',
+  'ImageData',
   'HtmlCanvasElement',
-  'Window',
   'console',
 ]
