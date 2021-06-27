@@ -21,12 +21,6 @@ use nes_core::input::InputType;
 use nes_core::palette;
 use nes_core::rom::rom_file::RomFile;
 
-// When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
-// allocator.
-#[cfg(feature = "wee_alloc")]
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
 #[wasm_bindgen]
 pub enum ControllerKeys {
     A = 1,
