@@ -99,12 +99,11 @@ impl DataBus {
                 if let Some(controller) = self.controller0.as_mut() {
                     controller.input(value)
                 }
-            }
-            0x4017 => {
                 if let Some(controller) = self.controller1.as_mut() {
                     controller.input(value)
                 }
             }
+            0x4017 => {}
             0x4000..=0x401F => {} // APU and IO registers
             0x4020..=0xFFFF => {
                 if let Some(mapper) = self.mapper.as_mut() {

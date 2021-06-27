@@ -20,8 +20,6 @@ const logMemoryChange = () => {
 
 setInterval(logMemoryChange, 5000);
 
-const context = nes.init();
-
 const canvas = document.getElementById("canvas");
 const background = document.getElementById("background");
 
@@ -36,9 +34,14 @@ const KEYMAPS = {
   ArrowRight: nes.ControllerKeys.RIGHT,
 };
 
+let joypad = 0;
+
 document.addEventListener("keydown", (evt) => {
+  if (evt.code === "KeyQ") {
+    joypad = joypad === 0 ? 1 : 0;
+  }
   if (KEYMAPS[evt.code]) {
-    context.key_down(KEYMAPS[evt.code]);
+    context.key_down(KEYMAPS[evt.code], joypad);
   }
 });
 
@@ -47,7 +50,7 @@ document.addEventListener("keyup", (evt) => {
     // This acts like a buffer for the keystrokes, making sure that an input is
     // registered even if it was released before an frame render
     runAfterNextFrame(() => {
-      context.key_up(KEYMAPS[evt.code]);
+      context.key_up(KEYMAPS[evt.code], joypad);
     });
   }
 });
@@ -63,7 +66,11 @@ setInterval(() => {
   currentFrame = 0;
 }, fpsLog);
 
+const context = nes.init();
 context.setup_canvas(canvas);
+context.attach_joypad(0);
+context.attach_joypad(1);
+context.reset();
 
 const renderLoop = () => {
   requestAnimationFrame(renderLoop);

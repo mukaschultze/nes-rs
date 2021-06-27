@@ -55,17 +55,9 @@ pub fn init() -> NesWebContext {
     // let mut rom = RomFile::from_file(rom_path);
     let mut rom = RomFile::from_bytes(include_bytes!("../../roms/Super Mario Bros (E).nes"));
     // let mut rom = RomFile::from_bytes(include_bytes!("../../roms/Donkey Kong (World) (Rev A).nes"));
-    let mut nes = NesConsole::new();
+    let nes = NesConsole::new();
 
     nes.bus.borrow_mut().connect_cartridge(&mut rom);
-
-    {
-        let mut bus = nes.bus.borrow_mut();
-        let controller = Controller::new();
-        bus.controller0 = Some(controller);
-    }
-
-    nes.reset();
 
     NesWebContext { nes }
 }
@@ -76,25 +68,47 @@ impl NesWebContext {
         self.nes.render_full_frame();
     }
 
-    pub fn get_background_color(&self) -> String {
-        let ppu = self.nes.ppu.borrow();
-        let color_idx = ppu.palette_vram[0];
-
-        let (r, g, b) = palette::get_rgb_color_split(color_idx);
-
-        format!("#{:02X}{:02X}{:02X}", r, g, b)
+    pub fn reset(&mut self) {
+        self.nes.reset();
     }
 
-    pub fn key_down(&mut self, key: u8) {
-        if let Some(controller) = self.nes.bus.borrow_mut().controller0.as_mut() {
+    pub fn attach_joypad(&mut self, joypad: u8) {
+        let mut bus = self.nes.bus.borrow_mut();
+        let controller = Controller::new();
+
+        match joypad {
+            0 => bus.controller0 = Some(controller),
+            1 => bus.controller1 = Some(controller),
+            _ => (),
+        };
+    }
+
+    pub fn key_down(&mut self, key: u8, joypad: u8) {
+        let mut bus = self.nes.bus.borrow_mut();
+        let controller = match joypad {
+            0 => bus.controller0.as_mut(),
+            1 => bus.controller1.as_mut(),
+            _ => None,
+        };
+
+        if let Some(controller) = controller {
+            log!("Joypad {} down {:?}", joypad, controller.data);
             controller
                 .data
                 .insert(ControllerDataLine::from_bits(key).unwrap());
         }
     }
 
-    pub fn key_up(&mut self, key: u8) {
-        if let Some(controller) = self.nes.bus.borrow_mut().controller0.as_mut() {
+    pub fn key_up(&mut self, key: u8, joypad: u8) {
+        let mut bus = self.nes.bus.borrow_mut();
+        let controller = match joypad {
+            0 => bus.controller0.as_mut(),
+            1 => bus.controller1.as_mut(),
+            _ => None,
+        };
+
+        if let Some(controller) = controller {
+            log!("Joypad {} up {:?}", joypad, controller.data);
             controller
                 .data
                 .remove(ControllerDataLine::from_bits(key).unwrap());
@@ -129,5 +143,14 @@ impl NesWebContext {
         context.put_image_data(&image_data, 0.0, 0.0)?;
 
         Ok(())
+    }
+
+    pub fn get_background_color(&self) -> String {
+        let ppu = self.nes.ppu.borrow();
+        let color_idx = ppu.palette_vram[0];
+
+        let (r, g, b) = palette::get_rgb_color_split(color_idx);
+
+        format!("#{:02X}{:02X}{:02X}", r, g, b)
     }
 }
