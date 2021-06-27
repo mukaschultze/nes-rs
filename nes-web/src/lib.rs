@@ -26,6 +26,18 @@ use nes_core::rom::rom_file::RomFile;
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 #[wasm_bindgen]
+pub enum ControllerKeys {
+    A = 1,
+    B = 2,
+    SELECT = 4,
+    START = 8,
+    UP = 16,
+    DOWN = 32,
+    LEFT = 64,
+    RIGHT = 128,
+}
+
+#[wasm_bindgen]
 pub struct NesWebContext {
     nes: NesConsole,
 }

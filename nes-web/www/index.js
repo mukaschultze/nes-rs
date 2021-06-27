@@ -25,50 +25,51 @@ const context = nes.init();
 const canvas = document.getElementById("canvas");
 const background = document.getElementById("background");
 
-const ControllerInput = {
-  A: 1 << 0,
-  B: 1 << 1,
-  SELECT: 1 << 2,
-  START: 1 << 3,
-  UP: 1 << 4,
-  DOWN: 1 << 5,
-  LEFT: 1 << 6,
-  RIGHT: 1 << 7,
-};
-
 const KEYMAPS = {
-  KeyZ: ControllerInput.A,
-  KeyX: ControllerInput.B,
-  Enter: ControllerInput.SELECT,
-  Space: ControllerInput.START,
-  ArrowUp: ControllerInput.UP,
-  ArrowDown: ControllerInput.DOWN,
-  ArrowLeft: ControllerInput.LEFT,
-  ArrowRight: ControllerInput.RIGHT,
+  KeyZ: nes.ControllerKeys.A,
+  KeyX: nes.ControllerKeys.B,
+  Enter: nes.ControllerKeys.SELECT,
+  Space: nes.ControllerKeys.START,
+  ArrowUp: nes.ControllerKeys.UP,
+  ArrowDown: nes.ControllerKeys.DOWN,
+  ArrowLeft: nes.ControllerKeys.LEFT,
+  ArrowRight: nes.ControllerKeys.RIGHT,
 };
 
 document.addEventListener("keydown", (evt) => {
-  if (KEYMAPS[evt.code]) context.key_down(KEYMAPS[evt.code]);
-});
-document.addEventListener("keyup", (evt) => {
-  if (KEYMAPS[evt.code]) context.key_up(KEYMAPS[evt.code]);
+  if (KEYMAPS[evt.code]) {
+    context.key_down(KEYMAPS[evt.code]);
+  }
 });
 
-let frames = 0;
+document.addEventListener("keyup", (evt) => {
+  if (KEYMAPS[evt.code]) {
+    // This acts like a buffer for the keystrokes, making sure that an input is
+    // registered even if it was released before an frame render
+    runAfterNextFrame(() => {
+      context.key_up(KEYMAPS[evt.code]);
+    });
+  }
+});
+
+const runAfterNextFrame = (func) =>
+  requestAnimationFrame(() => setTimeout(func, 0));
+
+let currentFrame = 0;
 let fpsLog = 2000;
 
 setInterval(() => {
-  console.log(`${frames / (fpsLog / 1000)} FPS`);
-  frames = 0;
+  console.log(`${currentFrame / (fpsLog / 1000)} FPS`);
+  currentFrame = 0;
 }, fpsLog);
 
 context.setup_canvas(canvas);
 
 const renderLoop = () => {
-  frames++;
   requestAnimationFrame(renderLoop);
 
   context.update_canvas(canvas);
+  currentFrame++;
   background.style.backgroundColor = context.get_background_color();
 };
 
