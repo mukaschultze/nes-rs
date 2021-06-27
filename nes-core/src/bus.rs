@@ -1,4 +1,5 @@
-use crate::controller::Controller;
+use crate::input::InputBus;
+use crate::input::InputType;
 use crate::ppu::Ppu;
 use crate::rom::mapper::Mapper;
 use crate::rom::rom_file::RomFile;
@@ -18,8 +19,8 @@ pub struct DataBus {
     ram: [u8; RAM_SIZE],
     pub mapper: Option<Rc<RefCell<Box<dyn Mapper>>>>,
     pub ppu: Option<Rc<RefCell<Ppu>>>,
-    pub controller0: Option<Controller>,
-    pub controller1: Option<Controller>,
+    pub input0: InputType,
+    pub input1: InputType,
 }
 
 impl DataBus {
@@ -28,8 +29,8 @@ impl DataBus {
             ram: [0; RAM_SIZE],
             mapper: None,
             ppu: None,
-            controller0: None,
-            controller1: None,
+            input0: InputType::Disconnected,
+            input1: InputType::Disconnected,
         }
     }
 
@@ -51,20 +52,8 @@ impl DataBus {
                 .borrow_mut()
                 .read_register_cpu_address(repeat_every(address, 0x2000, 8)),
             0x4014 => 0, // OAMDMA $4014 is write only!
-            0x4016 => {
-                if let Some(controller) = self.controller0.as_mut() {
-                    controller.output()
-                } else {
-                    0
-                }
-            }
-            0x4017 => {
-                if let Some(controller) = self.controller1.as_mut() {
-                    controller.output()
-                } else {
-                    0
-                }
-            }
+            0x4016 => self.input0.output(),
+            0x4017 => self.input1.output(),
             0x4000..=0x401F => 0, // APU and IO registers
             0x4020..=0xFFFF => {
                 if let Some(mapper) = self.mapper.as_mut() {
@@ -96,12 +85,8 @@ impl DataBus {
                 }
             }
             0x4016 => {
-                if let Some(controller) = self.controller0.as_mut() {
-                    controller.input(value)
-                }
-                if let Some(controller) = self.controller1.as_mut() {
-                    controller.input(value)
-                }
+                self.input0.input(value);
+                self.input1.input(value);
             }
             0x4017 => {}
             0x4000..=0x401F => {} // APU and IO registers

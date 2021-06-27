@@ -55,6 +55,24 @@ document.addEventListener("keyup", (evt) => {
   }
 });
 
+let zapper_trigger = false;
+let mouse_pixel_x = 0;
+let mouse_pixel_y = 0;
+
+document.addEventListener("contextmenu", (event) => event.preventDefault());
+
+canvas.addEventListener("mousemove", (evt) => {
+  mouse_pixel_x = ~~((evt.offsetX / canvas.clientWidth) * 256);
+  mouse_pixel_y = ~~((evt.offsetY / canvas.clientHeight) * 240);
+});
+
+canvas.addEventListener("mousedown", (evt) => {
+  zapper_trigger = true;
+  setTimeout(() => {
+    zapper_trigger = false;
+  }, 100);
+});
+
 const runAfterNextFrame = (func) =>
   requestAnimationFrame(() => setTimeout(func, 0));
 
@@ -69,11 +87,19 @@ setInterval(() => {
 const context = nes.init();
 context.setup_canvas(canvas);
 context.attach_joypad(0);
-context.attach_joypad(1);
+context.attach_zapper_gun(1);
 context.reset();
+
+console.log("Input 0:", context.get_input_type(0));
+console.log("Input 1:", context.get_input_type(1));
 
 const renderLoop = () => {
   requestAnimationFrame(renderLoop);
+  // setTimeout(renderLoop, 1000 / 60);
+
+  const brightness = context.brigthness_at(mouse_pixel_x, mouse_pixel_y);
+  const sensor = brightness > 0.9;
+  context.zapper_gun_input(zapper_trigger, zapper_trigger && sensor, 1);
 
   context.update_canvas(canvas);
   currentFrame++;
@@ -81,3 +107,4 @@ const renderLoop = () => {
 };
 
 requestAnimationFrame(renderLoop);
+// setInterval(renderLoop, 1000 / 60);

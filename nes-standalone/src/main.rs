@@ -31,8 +31,9 @@ use winit_input_helper::WinitInputHelper;
 use nfd::Response;
 
 use nes_core::console::NesConsole;
-use nes_core::controller::Controller;
-use nes_core::controller::ControllerDataLine;
+use nes_core::input::joypad::Joypad;
+use nes_core::input::joypad::JoypadDataLine;
+use nes_core::input::InputType;
 use nes_core::rom::rom_file::RomFile;
 
 const WIDTH: u32 = 256;
@@ -40,15 +41,15 @@ const HEIGHT: u32 = 240;
 const TARGET_FRAMERATE: i64 = 60;
 const HIGH_QUALITY: bool = false;
 
-const KEYMAPS: &[(VirtualKeyCode, ControllerDataLine)] = &[
-    (VirtualKeyCode::Z, ControllerDataLine::A),
-    (VirtualKeyCode::X, ControllerDataLine::B),
-    (VirtualKeyCode::Return, ControllerDataLine::SELECT),
-    (VirtualKeyCode::Space, ControllerDataLine::START),
-    (VirtualKeyCode::Up, ControllerDataLine::UP),
-    (VirtualKeyCode::Down, ControllerDataLine::DOWN),
-    (VirtualKeyCode::Left, ControllerDataLine::LEFT),
-    (VirtualKeyCode::Right, ControllerDataLine::RIGHT),
+const KEYMAPS: &[(VirtualKeyCode, JoypadDataLine)] = &[
+    (VirtualKeyCode::Z, JoypadDataLine::A),
+    (VirtualKeyCode::X, JoypadDataLine::B),
+    (VirtualKeyCode::Return, JoypadDataLine::SELECT),
+    (VirtualKeyCode::Space, JoypadDataLine::START),
+    (VirtualKeyCode::Up, JoypadDataLine::UP),
+    (VirtualKeyCode::Down, JoypadDataLine::DOWN),
+    (VirtualKeyCode::Left, JoypadDataLine::LEFT),
+    (VirtualKeyCode::Right, JoypadDataLine::RIGHT),
 ];
 
 fn main() -> ! {
@@ -78,8 +79,8 @@ fn load_nes(rom_path: &Path) -> NesConsole {
 
     {
         let mut bus = nes.bus.borrow_mut();
-        let controller = Controller::new();
-        bus.controller0 = Some(controller);
+        let joypad = Joypad::new();
+        bus.input0 = InputType::Joypad(joypad);
     }
 
     nes.reset();
@@ -188,13 +189,13 @@ fn start(rom_path: &Path) -> ! {
                 println!("Fullscreen changed");
             }
 
-            if let Some(nes_controller) = nes.bus.borrow_mut().controller0.as_mut() {
+            if let InputType::Joypad(joypad) = &mut nes.bus.borrow_mut().input0 {
                 for (src, dst) in KEYMAPS {
                     if input.key_pressed(*src) {
-                        nes_controller.data.insert(*dst);
+                        joypad.data.insert(*dst);
                     }
                     if input.key_released(*src) {
-                        nes_controller.data.remove(*dst);
+                        joypad.data.remove(*dst);
                     }
                 }
             }

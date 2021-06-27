@@ -1,6 +1,8 @@
+use crate::input::InputBus;
+
 bitflags! {
     #[derive(Default)]
-    pub struct ControllerDataLine: u8 {
+    pub struct JoypadDataLine: u8 {
         const A = 1 << 0;
         const B = 1 << 1;
         const SELECT = 1 << 2;
@@ -12,13 +14,13 @@ bitflags! {
     }
 }
 
-pub struct Controller {
+pub struct Joypad {
     shift: u8,
     strobe: bool,
-    pub data: ControllerDataLine,
+    pub data: JoypadDataLine,
 }
 
-impl Controller {
+impl Joypad {
     pub fn new() -> Self {
         Self {
             shift: 0,
@@ -26,9 +28,11 @@ impl Controller {
             data: Default::default(),
         }
     }
+}
 
+impl InputBus for Joypad {
     // https://wiki.nesdev.com/w/index.php/Standard_controller#Input_.28.244016_write.29
-    pub fn input(&mut self, value: u8) {
+    fn input(&mut self, value: u8) {
         self.strobe = (value & 1) != 0;
 
         if self.strobe {
@@ -37,7 +41,7 @@ impl Controller {
     }
 
     // https://wiki.nesdev.com/w/index.php/Standard_controller#Output_.28.244016.2F.244017_read.29
-    pub fn output(&mut self) -> u8 {
+    fn output(&mut self) -> u8 {
         if self.shift >= 8 {
             return 1;
         }
