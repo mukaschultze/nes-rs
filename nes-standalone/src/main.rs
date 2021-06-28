@@ -149,7 +149,7 @@ fn start(rom_path: &Path) -> ! {
                         pixels_buf.len(),
                     );
                 }
-                pixels.render();
+                pixels.render().expect("failed to render");
             }
             Event::WindowEvent { event, .. } => {
                 if let Some(size) = match event {

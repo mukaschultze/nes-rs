@@ -15,7 +15,7 @@ impl ZapperGun {
 }
 
 impl InputBus for ZapperGun {
-    fn input(&mut self, value: u8) {}
+    fn input(&mut self, _value: u8) {}
 
     // https://wiki.nesdev.com/w/index.php/Zapper
     fn output(&mut self) -> u8 {
