@@ -1,4 +1,4 @@
-import * as nes from "nes-wasm";
+import { ControllerKeys, NesWebContext } from "nes-wasm";
 
 function bytesToSize(bytes) {
   var sizes = ["Bytes", "KB", "MB", "GB", "TB"];
@@ -23,16 +23,17 @@ setInterval(logMemoryChange, 5000);
 const canvas = document.getElementById("canvas");
 const background = document.getElementById("background");
 const romInput = document.getElementById("rom");
+const debugText = document.getElementById("debug");
 
 const KEYMAPS = {
-  KeyZ: nes.ControllerKeys.A,
-  KeyX: nes.ControllerKeys.B,
-  Enter: nes.ControllerKeys.SELECT,
-  Space: nes.ControllerKeys.START,
-  ArrowUp: nes.ControllerKeys.UP,
-  ArrowDown: nes.ControllerKeys.DOWN,
-  ArrowLeft: nes.ControllerKeys.LEFT,
-  ArrowRight: nes.ControllerKeys.RIGHT,
+  KeyZ: ControllerKeys.A,
+  KeyX: ControllerKeys.B,
+  Enter: ControllerKeys.SELECT,
+  Space: ControllerKeys.START,
+  ArrowUp: ControllerKeys.UP,
+  ArrowDown: ControllerKeys.DOWN,
+  ArrowLeft: ControllerKeys.LEFT,
+  ArrowRight: ControllerKeys.RIGHT,
 };
 
 let joypad = 0;
@@ -78,17 +79,20 @@ const runAfterNextFrame = (func) =>
   requestAnimationFrame(() => setTimeout(func, 0));
 
 let currentFrame = 0;
-let fpsLog = 2000;
+let framerate = 0;
+let lastframe = 0;
+let fpsLog = 500;
+let timings = [];
 
 setInterval(() => {
-  console.log(`${currentFrame / (fpsLog / 1000)} FPS`);
-  currentFrame = 0;
+  framerate = (currentFrame - lastframe) / (fpsLog / 1000);
+  lastframe = currentFrame;
 }, fpsLog);
 
-const context = nes.init();
+const context = new NesWebContext();
 context.setup_canvas(canvas);
 context.attach_joypad(0);
-context.attach_zapper_gun(1);
+// context.attach_zapper_gun(1);
 
 romInput.addEventListener("input", async (evt) => {
   const file = evt.target.files[0];
@@ -106,14 +110,32 @@ const renderLoop = () => {
   requestAnimationFrame(renderLoop);
   // setTimeout(renderLoop, 1000 / 60);
 
-  const brightness = context.brigthness_at(mouse_pixel_x, mouse_pixel_y);
-  const sensor = brightness > 0.9;
-  context.zapper_gun_input(zapper_trigger, zapper_trigger && sensor, 1);
+  // const brightness = context.brigthness_at(mouse_pixel_x, mouse_pixel_y);
+  // const sensor = brightness > 0.9;
+  // context.zapper_gun_input(zapper_trigger, zapper_trigger && sensor, 1);
 
+  const t0 = performance.now();
+  context.simulate();
   context.update_canvas(canvas);
+  const t1 = performance.now();
+
   currentFrame++;
   background.style.backgroundColor = context.get_background_color();
+
+  const diff = t1 - t0;
+  timings[currentFrame % 120] = diff;
+
+  const low = Math.min(...timings).toFixed(2);
+  const high = Math.max(...timings).toFixed(2);
+  const avg = (timings.reduce((a, b) => a + b) / timings.length).toFixed(2);
+  const ideal = (1000 / 60).toFixed(2);
+
+  if (currentFrame % 15 === 0) {
+    debugText.innerText = `${framerate} FPS / Render: ${diff.toFixed(
+      2
+    )}ms / Low ${low}ms / Avg ${avg}ms / High ${high}ms / Ideal <${ideal}ms`;
+  }
 };
 
 requestAnimationFrame(renderLoop);
-// setInterval(renderLoop, 1000 / 60);
+// setInterval(renderLoop, Math.floor(1000 / 60));

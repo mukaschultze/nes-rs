@@ -34,13 +34,6 @@ pub enum ControllerKeys {
 }
 
 #[wasm_bindgen]
-pub enum InputTypeValue {
-    Joypad = "joypad",
-    ZapperGun = "zapper",
-    Disconnected = "disconnected",
-}
-
-#[wasm_bindgen]
 pub struct NesWebContext {
     nes: NesConsole,
 }
@@ -51,15 +44,15 @@ extern "C" {
 }
 
 #[wasm_bindgen]
-pub fn init() -> NesWebContext {
-    utils::set_panic_hook();
-    NesWebContext {
-        nes: NesConsole::new(),
-    }
-}
-
-#[wasm_bindgen]
 impl NesWebContext {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> NesWebContext {
+        utils::set_panic_hook();
+        NesWebContext {
+            nes: NesConsole::new(),
+        }
+    }
+
     pub fn nes_frame(&mut self) {
         self.nes.render_full_frame();
     }
@@ -96,7 +89,7 @@ impl NesWebContext {
         };
     }
 
-    pub fn get_input_type(&self, input: u8) -> InputTypeValue {
+    pub fn get_input_type(&self, input: u8) -> String {
         let bus = self.nes.bus.borrow();
 
         let input_device = match input {
@@ -106,9 +99,9 @@ impl NesWebContext {
         };
 
         match input_device {
-            InputType::Joypad(_) => InputTypeValue::Joypad,
-            InputType::Zapper(_) => InputTypeValue::ZapperGun,
-            InputType::Disconnected => InputTypeValue::Disconnected,
+            InputType::Joypad(_) => "joypad".into(),
+            InputType::Zapper(_) => "zapper".into(),
+            InputType::Disconnected => "disconnected".into(),
         }
     }
 
@@ -177,7 +170,11 @@ impl NesWebContext {
         canvas.set_height(240);
     }
 
-    pub fn update_canvas(&mut self, canvas: &web_sys::HtmlCanvasElement) -> Result<(), JsValue> {
+    pub fn simulate(&mut self) {
+        self.nes.render_full_frame();
+    }
+
+    pub fn update_canvas(&self, canvas: &web_sys::HtmlCanvasElement) -> Result<(), JsValue> {
         let context = canvas
             .get_context("2d")?
             .expect("context 2d to be available")
@@ -186,9 +183,7 @@ impl NesWebContext {
         let width = 256;
         let height = 240;
 
-        self.nes.render_full_frame();
-
-        let mut output_buffer = vec![0; (256 * 240 * 4) as usize];
+        let mut output_buffer = vec![0; (width * height * 4) as usize];
         self.nes.get_output_rgba_u8(&mut output_buffer);
 
         let image_data = web_sys::ImageData::new_with_u8_clamped_array_and_sh(
