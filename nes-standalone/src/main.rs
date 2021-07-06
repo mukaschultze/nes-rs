@@ -12,7 +12,6 @@ use stopwatch::Stopwatch;
 use std::env;
 use std::path::Path;
 
-use pixels::wgpu::Surface;
 use pixels::wgpu::TextureFormat;
 use pixels::PixelsBuilder;
 use pixels::SurfaceTexture;
@@ -31,13 +30,13 @@ use winit_input_helper::WinitInputHelper;
 use nfd::Response;
 
 use nes_core::console::NesConsole;
+use nes_core::console::NES_HEIGHT;
+use nes_core::console::NES_WIDTH;
 use nes_core::input::joypad::Joypad;
 use nes_core::input::joypad::JoypadDataLine;
 use nes_core::input::InputType;
 use nes_core::rom::rom_file::RomFile;
 
-const WIDTH: u32 = 256;
-const HEIGHT: u32 = 240;
 const TARGET_FRAMERATE: i64 = 60;
 const HIGH_QUALITY: bool = false;
 
@@ -57,7 +56,7 @@ fn main() -> ! {
 
     if args.len() < 2 {
         let result = nfd::open_file_dialog(Some("nes"), None).unwrap_or_else(|e| {
-            panic!(e);
+            panic!("{}", e);
         });
 
         match result {
@@ -91,14 +90,14 @@ fn start(rom_path: &Path) -> ! {
     let mut nes = load_nes(rom_path);
 
     // Generate output buffers
-    let mut output_buffer = vec![0; (WIDTH * HEIGHT) as usize];
+    let mut output_buffer = vec![0; (NES_WIDTH * NES_HEIGHT) as usize];
     let (mut output_buffer_scaled, scaled_width, scaled_height) =
-        nes_core::xbr::get_buffer_for_size(WIDTH, HEIGHT);
+        nes_core::xbr::get_buffer_for_size(NES_WIDTH, NES_HEIGHT);
 
     let (width, height) = if HIGH_QUALITY {
         (scaled_width, scaled_height)
     } else {
-        (WIDTH, HEIGHT)
+        (NES_WIDTH, NES_HEIGHT)
     };
 
     let event_loop = EventLoop::new();
@@ -135,7 +134,12 @@ fn start(rom_path: &Path) -> ! {
                 nes.get_output_rgb_u32(&mut output_buffer);
 
                 let src = if HIGH_QUALITY {
-                    nes_core::xbr::apply(&mut output_buffer_scaled, &output_buffer, WIDTH, HEIGHT);
+                    nes_core::xbr::apply(
+                        &mut output_buffer_scaled,
+                        &output_buffer,
+                        NES_WIDTH,
+                        NES_HEIGHT,
+                    );
                     &output_buffer_scaled
                 } else {
                     &output_buffer

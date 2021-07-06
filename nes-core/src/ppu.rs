@@ -1,3 +1,5 @@
+use crate::console::NES_HEIGHT;
+use crate::console::NES_WIDTH;
 use crate::cpu::CPU6502;
 use crate::rom::mapper::Mapper;
 use std::cell::RefCell;
@@ -101,9 +103,9 @@ pub struct Ppu {
     /// First or second write toggle (1 bit)
     w: bool,
 
-    pub output: [u8; 256 * 240], // 256x240 pixels
-    bitmap: [u8; 256 * 240],     // 256x240 pixels
-    vram: [u8; 0x1000],          // 2kb // TODO: Implement mirroring and fix the VRAM size
+    pub output: [u8; (NES_WIDTH * NES_HEIGHT) as usize], // 256x240 pixels
+    bitmap: [u8; (NES_WIDTH * NES_HEIGHT) as usize],     // 256x240 pixels
+    vram: [u8; 0x1000], // 2kb // TODO: Implement mirroring and fix the VRAM size
     pub palette_vram: [u8; 32],
     vram_buffer: u8,
 
@@ -156,8 +158,8 @@ impl Ppu {
             t: 0,
             x: 0,
             w: false,
-            output: [0; 256 * 240],
-            bitmap: [0; 256 * 240],
+            output: [0; (NES_WIDTH * NES_HEIGHT) as usize],
+            bitmap: [0; (NES_WIDTH * NES_HEIGHT) as usize],
             vram: [0; 0x1000],
             palette_vram: [0; 32],
             vram_buffer: 0,

@@ -14,6 +14,8 @@ use wasm_bindgen::Clamped;
 use wasm_bindgen::JsCast;
 
 use nes_core::console::NesConsole;
+use nes_core::console::NES_HEIGHT;
+use nes_core::console::NES_WIDTH;
 use nes_core::input::joypad::Joypad;
 use nes_core::input::joypad::JoypadDataLine;
 use nes_core::input::zapper_gun::ZapperGun;
@@ -61,7 +63,7 @@ impl NesWebContext {
         self.nes.reset();
     }
 
-    pub fn inser_cartridge(&mut self, rom_bytes: Vec<u8>) {
+    pub fn insert_cartridge(&mut self, rom_bytes: Vec<u8>) {
         let rom = RomFile::from_bytes(&rom_bytes);
 
         self.nes.bus.borrow_mut().connect_cartridge(rom);
@@ -145,6 +147,61 @@ impl NesWebContext {
         }
     }
 
+    pub fn simulate(&mut self) {
+        self.nes.render_full_frame();
+    }
+
+    pub fn get_frame_output_rgba_u8(&self) -> Vec<u8> {
+        let mut output_buffer = vec![0; (NES_WIDTH * NES_HEIGHT * 4) as usize];
+        self.nes.get_output_rgba_u8(&mut output_buffer);
+        output_buffer
+    }
+
+    pub fn get_frame_output_rgb_u8(&self) -> Vec<u8> {
+        let mut output_buffer = vec![0; (NES_WIDTH * NES_HEIGHT * 3) as usize];
+        self.nes.get_output_rgb_u8(&mut output_buffer);
+        output_buffer
+    }
+
+    pub fn get_frame_output_rgb_u32(&self) -> Vec<u32> {
+        let mut output_buffer = vec![0; (NES_WIDTH * NES_HEIGHT) as usize];
+        self.nes.get_output_rgb_u32(&mut output_buffer);
+        output_buffer
+    }
+
+    pub fn setup_canvas(&mut self, canvas: &web_sys::HtmlCanvasElement) {
+        canvas.set_width(NES_WIDTH);
+        canvas.set_height(NES_HEIGHT);
+    }
+
+    pub fn update_canvas(&self, canvas: &web_sys::HtmlCanvasElement) -> Result<(), JsValue> {
+        let context = canvas
+            .get_context("2d")?
+            .expect("context 2d is not available")
+            .dyn_into::<web_sys::CanvasRenderingContext2d>()?;
+
+        let output_buffer = self.get_frame_output_rgba_u8();
+
+        let image_data = web_sys::ImageData::new_with_u8_clamped_array_and_sh(
+            Clamped(&output_buffer),
+            NES_WIDTH,
+            NES_HEIGHT,
+        )?;
+
+        context.put_image_data(&image_data, 0.0, 0.0)?;
+
+        Ok(())
+    }
+
+    pub fn get_background_color(&self) -> String {
+        let ppu = self.nes.ppu.borrow();
+        let color_idx = ppu.palette_vram[0];
+
+        let (r, g, b) = palette::get_rgb_color_split(color_idx);
+
+        format!("#{:02X}{:02X}{:02X}", r, g, b)
+    }
+
     pub fn color_at(&self, x: usize, y: usize) -> String {
         let ppu = self.nes.ppu.borrow();
         let pixel_idx = y * 256 + x;
@@ -163,46 +220,5 @@ impl NesWebContext {
         let (r, g, b) = palette::get_rgb_color_split(color_raw);
 
         (0.299 * r as f32 + 0.587 * g as f32 + 0.114 * b as f32) / 255.0
-    }
-
-    pub fn setup_canvas(&mut self, canvas: &web_sys::HtmlCanvasElement) {
-        canvas.set_width(256);
-        canvas.set_height(240);
-    }
-
-    pub fn simulate(&mut self) {
-        self.nes.render_full_frame();
-    }
-
-    pub fn update_canvas(&self, canvas: &web_sys::HtmlCanvasElement) -> Result<(), JsValue> {
-        let context = canvas
-            .get_context("2d")?
-            .expect("context 2d to be available")
-            .dyn_into::<web_sys::CanvasRenderingContext2d>()?;
-
-        let width = 256;
-        let height = 240;
-
-        let mut output_buffer = vec![0; (width * height * 4) as usize];
-        self.nes.get_output_rgba_u8(&mut output_buffer);
-
-        let image_data = web_sys::ImageData::new_with_u8_clamped_array_and_sh(
-            Clamped(&output_buffer),
-            width,
-            height,
-        )?;
-
-        context.put_image_data(&image_data, 0.0, 0.0)?;
-
-        Ok(())
-    }
-
-    pub fn get_background_color(&self) -> String {
-        let ppu = self.nes.ppu.borrow();
-        let color_idx = ppu.palette_vram[0];
-
-        let (r, g, b) = palette::get_rgb_color_split(color_idx);
-
-        format!("#{:02X}{:02X}{:02X}", r, g, b)
     }
 }

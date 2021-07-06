@@ -98,7 +98,7 @@ romInput.addEventListener("input", async (evt) => {
   const file = evt.target.files[0];
   const buffer = await file.arrayBuffer();
   const arr = new Uint8Array(buffer);
-  context.inser_cartridge(arr);
+  context.insert_cartridge(arr);
   context.reset();
   console.log(`${file.name} loaded`);
 });
