@@ -2,6 +2,7 @@ extern crate bytesize;
 
 use crate::rom::mapper::Mapper;
 use crate::rom::mapper0::Mapper0;
+// use crate::rom::mapper3::Mapper3;
 use crate::rom::rom_header::RomHeader;
 use std::fs::File;
 use std::io::BufReader;
@@ -56,6 +57,7 @@ impl RomFile {
     pub fn get_mapper(&mut self) -> Box<dyn Mapper> {
         match self.header.get_mapper_id() {
             0 => Box::new(Mapper0::new(self)) as Box<dyn Mapper>,
+            // 3 => Box::new(Mapper3::new(self)) as Box<dyn Mapper>,
             id => panic!("Mapper {} not implemented", id),
         }
     }
